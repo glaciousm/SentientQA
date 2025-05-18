@@ -1,2 +1,74 @@
-/.idea/
-.idea
+# Enhanced .gitignore for Project Oracle
+
+# IDE specific files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.factorypath
+
+# Build directories
+target/
+build/
+out/
+bin/
+classes/
+dist/
+
+# Maven specific
+.mvn/
+mvnw
+mvnw.cmd
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# Gradle specific
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+
+# Logs
+logs/
+*.log
+
+# AI model files and caches
+models/
+cache/
+embeddings/
+*.bin
+*.pt
+*.gguf
+*.safetensors
+
+# Generated test output
+output/
+generated-tests/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# Java specific
+*.class
+hs_err_pid*
+replay_pid*
+
+# Temporary files
+*~
+temp/
+tmp/
+
+# Application specific
+application-local.properties
+application-dev.properties
