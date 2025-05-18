@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Contains detailed information about a Java method extracted from code analysis.
@@ -45,7 +46,7 @@ public class MethodInfo {
         if (parameters != null && !parameters.isEmpty()) {
             sb.append(parameters.stream()
                                 .map(param -> param.getType() + " " + param.getName())
-                                .collect(java.util.stream.Collectors.joining(", ")));
+                                .collect(Collectors.joining(", ")));
         }
 
         sb.append(")");
@@ -58,6 +59,7 @@ public class MethodInfo {
  */
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 class ParameterInfo {
     private String type;
     private String name;

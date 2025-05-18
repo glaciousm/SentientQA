@@ -7,7 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service for generating test cases using AI models.
@@ -52,11 +55,35 @@ public class TestGenerationService {
                        .className("Test" + methodInfo.getClassName())
                        .methodName("test" + methodInfo.getMethodName())
                        .sourceCode(generatedTestCode)
+                       .assertions(extractAssertions(generatedTestCode))
                        .createdAt(LocalDateTime.now())
                        .modifiedAt(LocalDateTime.now())
                        .confidenceScore(0.8)
                        .generationPrompt(prompt)
                        .build();
+    }
+
+    /**
+     * Extract assertions from generated test code
+     * This is a simple implementation that looks for assert statements
+     */
+    private List<String> extractAssertions(String testCode) {
+        List<String> assertions = new ArrayList<>();
+        if (testCode == null || testCode.isEmpty()) {
+            return assertions;
+        }
+
+        // Split the code into lines
+        String[] lines = testCode.split("\n");
+        for (String line : lines) {
+            line = line.trim();
+            // Look for assertions (simple implementation)
+            if (line.contains("assert") && !line.startsWith("//") && !line.startsWith("*")) {
+                assertions.add(line);
+            }
+        }
+
+        return assertions;
     }
 
     /**

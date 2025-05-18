@@ -24,7 +24,7 @@
     <djl.version>0.23.0</djl.version>
     <tribuo.version>4.3.0</tribuo.version>
     <javaparser.version>3.25.4</javaparser.version>
-    <lucene.version>10.2.1</lucene.version>
+    <lucene.version>9.7.0</lucene.version>
     <rocksdb.version>8.3.2</rocksdb.version>
   </properties>
 
@@ -41,6 +41,12 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- Jakarta EE for annotations -->
+    <dependency>
+      <groupId>jakarta.annotation</groupId>
+      <artifactId>jakarta.annotation-api</artifactId>
     </dependency>
 
     <!-- DJL (Deep Java Library) for AI Models -->

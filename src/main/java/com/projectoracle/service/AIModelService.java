@@ -16,9 +16,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,7 +36,7 @@ public class AIModelService {
     @Autowired
     private AIConfig aiConfig;
 
-    private final ConcurrentHashMap<String, ZooModel<?>> loadedModels = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ZooModel<String, String>> loadedModels = new ConcurrentHashMap<>();
 
     /**
      * Initialize the AI model service and prepare directories
@@ -104,6 +104,7 @@ public class AIModelService {
                                                             .optModelPath(aiConfig.getLanguageModelPath())
                                                             .optEngine("PyTorch") // Using PyTorch engine
                                                             .optProgress(new ProgressBar())
+                                                            .optTranslator(new TextGenerationTranslator(1024))
                                                             .build();
 
                 return ModelZoo.loadModel(criteria);
@@ -137,7 +138,7 @@ public class AIModelService {
      * Manually unload a specific model to free resources
      */
     public void unloadModel(String modelKey) {
-        ZooModel<?> model = loadedModels.remove(modelKey);
+        ZooModel<String, String> model = loadedModels.remove(modelKey);
         if (model != null) {
             try {
                 logger.info("Manually unloading model: {}", modelKey);
