@@ -1,0 +1,629 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Oracle - AI-Powered QA Platform</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<!-- Main HTML content here -->
+
+<!-- JavaScript Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Application JavaScript -->
+<script>
+  // API Base URL
+  const API_BASE_URL = 'http://localhost:8080/api/v1';
+
+  // DOM Elements
+  const totalTestsCount = document.getElementById('totalTestsCount');
+  const passedTestsCount = document.getElementById('passedTestsCount');
+  const failedTestsCount = document.getElementById('failedTestsCount');
+  const brokenTestsCount = document.getElementById('brokenTestsCount');
+  const testStatusChart = document.getElementById('testStatusChart');
+  const recentTestsList = document.getElementById('recentTestsList');
+  const testTableBody = document.getElementById('testTableBody');
+  const brokenTestsTable = document.getElementById('brokenTestsTable');
+
+  // Initialize charts
+  let statusChart;
+  let memorySavingsChart;
+
+  // Initialize the application
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Dashboard
+    initDashboard();
+
+    // Initialize Code Analysis
+    initCodeAnalysis();
+
+    // Initialize Test Generation
+    initTestGeneration();
+
+    // Initialize Test Execution
+    initTestExecution();
+
+    // Initialize Test Healing
+    initTestHealing();
+
+    // Initialize Model Optimization
+    initModelOptimization();
+  });
+
+  // Dashboard Functions
+  function initDashboard() {
+    // Load test statistics
+    loadTestStatistics();
+
+    // Initialize charts
+    initCharts();
+
+    // Load recent tests
+    loadRecentTests();
+  }
+
+  function loadTestStatistics() {
+    // Fetch test statistics from API
+    fetch(`${API_BASE_URL}/tests`)
+    .then(response => response.json())
+    .then(tests => {
+      // Count tests by status
+      let passed = 0;
+      let failed = 0;
+      let broken = 0;
+
+      tests.forEach(test => {
+        switch (test.status) {
+          case 'PASSED':
+            passed++;
+            break;
+          case 'FAILED':
+            failed++;
+            break;
+          case 'BROKEN':
+            broken++;
+            break;
+        }
+      });
+
+      // Update count elements
+      totalTestsCount.textContent = tests.length;
+      passedTestsCount.textContent = passed;
+      failedTestsCount.textContent = failed;
+      brokenTestsCount.textContent = broken;
+
+      // Update chart
+      updateStatusChart(passed, failed, broken, tests.length - passed - failed - broken);
+    })
+    .catch(error => {
+      console.error('Error loading test statistics:', error);
+      // Use placeholder data for demo
+      totalTestsCount.textContent = '45';
+      passedTestsCount.textContent = '32';
+      failedTestsCount.textContent = '8';
+      brokenTestsCount.textContent = '5';
+
+      // Update chart with placeholder data
+      updateStatusChart(32, 8, 5, 0);
+    });
+  }
+
+  function initCharts() {
+    // Initialize test status chart
+    statusChart = new Chart(testStatusChart, {
+      type: 'doughnut',
+      data: {
+        labels: ['Passed', 'Failed', 'Broken', 'Other'],
+        datasets: [{
+          data: [0, 0, 0, 0],
+          backgroundColor: ['#28a745', '#dc3545', '#fd7e14', '#6c757d']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right'
+          }
+        }
+      }
+    });
+
+    // Initialize memory savings chart (if element exists)
+    const memorySavingsChartEl = document.getElementById('memorySavingsChart');
+    if (memorySavingsChartEl) {
+      memorySavingsChart = new Chart(memorySavingsChartEl, {
+        type: 'bar',
+        data: {
+          labels: ['FP32', 'FP16', 'INT8', 'INT4'],
+          datasets: [{
+            label: 'Memory Usage (MB)',
+            data: [500, 250, 125, 62.5],
+            backgroundColor: [
+              'rgba(67, 97, 238, 0.5)',
+              'rgba(67, 97, 238, 0.6)',
+              'rgba(67, 97, 238, 0.7)',
+              'rgba(67, 97, 238, 0.8)'
+            ],
+            borderColor: [
+              'rgba(67, 97, 238, 1)',
+              'rgba(67, 97, 238, 1)',
+              'rgba(67, 97, 238, 1)',
+              'rgba(67, 97, 238, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Memory Usage (MB)'
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  function updateStatusChart(passed, failed, broken, other) {
+    if (statusChart) {
+      statusChart.data.datasets[0].data = [passed, failed, broken, other];
+      statusChart.update();
+    }
+  }
+
+  function loadRecentTests() {
+    // Fetch recent tests from API
+    fetch(`${API_BASE_URL}/tests`)
+    .then(response => response.json())
+    .then(tests => {
+      // Sort tests by modification date (newest first)
+      tests.sort((a, b) => new Date(b.modifiedAt) - new Date(a.modifiedAt));
+
+      // Take only the 10 most recent tests
+      const recentTests = tests.slice(0, 10);
+
+      // Clear the list
+      recentTestsList.innerHTML = '';
+
+      // Add each test to the list
+      recentTests.forEach(test => {
+        const testItem = document.createElement('div');
+        testItem.className = `test-item p-2 mb-2 ${getTestStatusClass(test.status)}`;
+
+        testItem.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-0">${test.name}</h6>
+                                    <small class="text-muted">${test.className}</small>
+                                </div>
+                                <span class="test-status ${getTestStatusBadgeClass(test.status)}">${test.status}</span>
+                            </div>
+                        `;
+
+        // Add click event to show test details
+        testItem.addEventListener('click', () => showTestDetails(test));
+
+        recentTestsList.appendChild(testItem);
+      });
+    })
+    .catch(error => {
+      console.error('Error loading recent tests:', error);
+      // Show error message
+      recentTestsList.innerHTML = '<div class="alert alert-danger">Failed to load recent tests</div>';
+
+      // Add placeholder data for demo
+      addPlaceholderTests();
+    });
+  }
+
+  function addPlaceholderTests() {
+    // Add placeholder test items for demo
+    recentTestsList.innerHTML = '';
+
+    const statuses = ['PASSED', 'PASSED', 'PASSED', 'FAILED', 'BROKEN', 'PASSED', 'PASSED', 'FAILED', 'PASSED', 'HEALED'];
+    const names = ['testAddNumbers', 'testUserLogin', 'testDataValidation', 'testErrorHandling', 'testFileUpload',
+      'testCalculateTotal', 'testProcessOrder', 'testGenerateReport', 'testSendEmail', 'testParseInput'];
+    const classes = ['TestCalculator', 'TestAuthService', 'TestValidator', 'TestExceptionHandler', 'TestFileService',
+      'TestOrderService', 'TestCheckoutService', 'TestReportGenerator', 'TestNotificationService', 'TestParser'];
+
+    for (let i = 0; i < 10; i++) {
+      const testItem = document.createElement('div');
+      testItem.className = `test-item p-2 mb-2 ${getTestStatusClass(statuses[i])}`;
+
+      testItem.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">${names[i]}</h6>
+                            <small class="text-muted">${classes[i]}</small>
+                        </div>
+                        <span class="test-status ${getTestStatusBadgeClass(statuses[i])}">${statuses[i]}</span>
+                    </div>
+                `;
+
+      recentTestsList.appendChild(testItem);
+    }
+  }
+
+  // Code Analysis Functions
+  function initCodeAnalysis() {
+    // Set up event listeners for code analysis buttons
+    const analyzeCodeBtn = document.getElementById('analyzeCodeBtn');
+    const analyzeFileBtn = document.getElementById('analyzeFileBtn');
+    const scanDirBtn = document.getElementById('scanDirBtn');
+
+    if (analyzeCodeBtn) {
+      analyzeCodeBtn.addEventListener('click', analyzeCode);
+    }
+
+    if (analyzeFileBtn) {
+      analyzeFileBtn.addEventListener('click', analyzeFile);
+    }
+
+    if (scanDirBtn) {
+      scanDirBtn.addEventListener('click', scanDirectory);
+    }
+  }
+
+  function analyzeCode() {
+    const codeInput = document.getElementById('codeInput');
+    const analysisResults = document.getElementById('analysisResults');
+
+    if (!codeInput || !codeInput.value.trim()) {
+      alert('Please enter some Java code to analyze.');
+      return;
+    }
+
+    // Show loading indicator
+    analysisResults.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Analyzing code...</p>
+                </div>
+            `;
+
+    // Call the API to analyze the code
+    fetch(`${API_BASE_URL}/analyze/code`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain'
+      },
+      body: codeInput.value
+    })
+    .then(response => response.json())
+    .then(results => {
+      displayAnalysisResults(results);
+    })
+    .catch(error => {
+      console.error('Error analyzing code:', error);
+      analysisResults.innerHTML = `
+                        <div class="alert alert-danger">
+                            Failed to analyze code: ${error.message}
+                        </div>
+                    `;
+
+      // Show placeholder results for demo
+      displayPlaceholderAnalysisResults();
+    });
+  }
+
+  function analyzeFile() {
+    const filePathInput = document.getElementById('filePathInput');
+    const analysisResults = document.getElementById('analysisResults');
+
+    if (!filePathInput || !filePathInput.value.trim()) {
+      alert('Please enter a file path to analyze.');
+      return;
+    }
+
+    // Show loading indicator
+    analysisResults.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Analyzing file...</p>
+                </div>
+            `;
+
+    // Call the API to analyze the file
+    fetch(`${API_BASE_URL}/analyze/file?filePath=${encodeURIComponent(filePathInput.value)}`)
+    .then(response => response.json())
+    .then(results => {
+      displayAnalysisResults(results);
+    })
+    .catch(error => {
+      console.error('Error analyzing file:', error);
+      analysisResults.innerHTML = `
+                        <div class="alert alert-danger">
+                            Failed to analyze file: ${error.message}
+                        </div>
+                    `;
+
+      // Show placeholder results for demo
+      displayPlaceholderAnalysisResults();
+    });
+  }
+
+  function scanDirectory() {
+    const dirPathInput = document.getElementById('dirPathInput');
+    const analysisResults = document.getElementById('analysisResults');
+
+    if (!dirPathInput || !dirPathInput.value.trim()) {
+      alert('Please enter a directory path to scan.');
+      return;
+    }
+
+    // Show loading indicator
+    analysisResults.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Scanning directory...</p>
+                </div>
+            `;
+
+    // Call the API to scan the directory
+    fetch(`${API_BASE_URL}/analyze/directory?dirPath=${encodeURIComponent(dirPathInput.value)}`)
+    .then(response => response.json())
+    .then(results => {
+      displayDirectoryScanResults(results);
+    })
+    .catch(error => {
+      console.error('Error scanning directory:', error);
+      analysisResults.innerHTML = `
+                        <div class="alert alert-danger">
+                            Failed to scan directory: ${error.message}
+                        </div>
+                    `;
+
+      // Show placeholder results for demo
+      displayPlaceholderDirectoryScanResults();
+    });
+  }
+
+  function displayAnalysisResults(results) {
+    const analysisResults = document.getElementById('analysisResults');
+
+    if (!results || Object.keys(results).length === 0) {
+      analysisResults.innerHTML = `
+                    <div class="alert alert-info">
+                        No methods found in the provided code.
+                    </div>
+                `;
+      return;
+    }
+
+    // Build the results HTML
+    let resultsHtml = `
+                <h5>Found ${Object.keys(results).length} methods:</h5>
+                <div class="list-group">
+            `;
+
+    for (const [methodKey, methodInfo] of Object.entries(results)) {
+      resultsHtml += `
+                    <div class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-1">${methodInfo.signature}</h6>
+                            <button class="btn btn-sm btn-primary generate-test-btn" 
+                                    data-method-key="${methodKey}"
+                                    data-package-name="${methodInfo.packageName}"
+                                    data-class-name="${methodInfo.className}"
+                                    data-method-name="${methodInfo.methodName}"
+                                    data-return-type="${methodInfo.returnType}">
+                                Generate Test
+                            </button>
+                        </div>
+                        <p class="mb-1">
+                            <small class="text-muted">
+                                ${methodInfo.packageName}.${methodInfo.className}
+                            </small>
+                        </p>
+                        <p class="mb-1">
+                            <small>Return type: ${methodInfo.returnType}</small>
+                        </p>
+                        ${methodInfo.parameters && methodInfo.parameters.length > 0 ? `
+                            <p class="mb-1">
+                                <small>Parameters: ${methodInfo.parameters.map(p => `${p.type} ${p.name}`).join(', ')}</small>
+                            </p>
+                        ` : ''}
+                    </div>
+                `;
+    }
+
+    resultsHtml += `</div>`;
+
+    // Update the results container
+    analysisResults.innerHTML = resultsHtml;
+
+    // Add event listeners to the generate test buttons
+    const generateTestButtons = document.querySelectorAll('.generate-test-btn');
+    generateTestButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const methodKey = this.getAttribute('data-method-key');
+        const methodInfo = results[methodKey];
+
+        // Populate the method info form
+        document.getElementById('packageName').value = methodInfo.packageName;
+        document.getElementById('className').value = methodInfo.className;
+        document.getElementById('methodName').value = methodInfo.methodName;
+        document.getElementById('returnType').value = methodInfo.returnType;
+
+        // Populate parameters
+        if (methodInfo.parameters && methodInfo.parameters.length > 0) {
+          document.getElementById('parameters').value = methodInfo.parameters.map(p => `${p.type} ${p.name}`).join(', ');
+        } else {
+          document.getElementById('parameters').value = '';
+        }
+
+        // Scroll to the test generation section
+        document.getElementById('test-generation').scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  }
+
+  function displayPlaceholderAnalysisResults() {
+    const analysisResults = document.getElementById('analysisResults');
+
+    // Build placeholder results HTML
+    let resultsHtml = `
+                <h5>Found 3 methods:</h5>
+                <div class="list-group">
+            `;
+
+    const methods = [
+      {
+        key: 'Calculator.add',
+        signature: 'add(int a, int b)',
+        packageName: 'com.example',
+        className: 'Calculator',
+        methodName: 'add',
+        returnType: 'int',
+        parameters: [
+          { type: 'int', name: 'a' },
+          { type: 'int', name: 'b' }
+        ]
+      },
+      {
+        key: 'Calculator.subtract',
+        signature: 'subtract(int a, int b)',
+        packageName: 'com.example',
+        className: 'Calculator',
+        methodName: 'subtract',
+        returnType: 'int',
+        parameters: [
+          { type: 'int', name: 'a' },
+          { type: 'int', name: 'b' }
+        ]
+      },
+      {
+        key: 'Calculator.multiply',
+        signature: 'multiply(int a, int b)',
+        packageName: 'com.example',
+        className: 'Calculator',
+        methodName: 'multiply',
+        returnType: 'int',
+        parameters: [
+          { type: 'int', name: 'a' },
+          { type: 'int', name: 'b' }
+        ]
+      }
+    ];
+
+    for (const methodInfo of methods) {
+      resultsHtml += `
+                    <div class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-1">${methodInfo.signature}</h6>
+                            <button class="btn btn-sm btn-primary generate-test-btn-placeholder" 
+                                    data-method-key="${methodInfo.key}"
+                                    data-package-name="${methodInfo.packageName}"
+                                    data-class-name="${methodInfo.className}"
+                                    data-method-name="${methodInfo.methodName}"
+                                    data-return-type="${methodInfo.returnType}">
+                                Generate Test
+                            </button>
+                        </div>
+                        <p class="mb-1">
+                            <small class="text-muted">
+                                ${methodInfo.packageName}.${methodInfo.className}
+                            </small>
+                        </p>
+                        <p class="mb-1">
+                            <small>Return type: ${methodInfo.returnType}</small>
+                        </p>
+                        ${methodInfo.parameters && methodInfo.parameters.length > 0 ? `
+                            <p class="mb-1">
+                                <small>Parameters: ${methodInfo.parameters.map(p => `${p.type} ${p.name}`).join(', ')}</small>
+                            </p>
+                        ` : ''}
+                    </div>
+                `;
+    }
+
+    resultsHtml += `</div>`;
+
+    // Update the results container
+    analysisResults.innerHTML = resultsHtml;
+
+    // Add event listeners to the generate test buttons
+    const generateTestButtons = document.querySelectorAll('.generate-test-btn-placeholder');
+    generateTestButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const packageName = this.getAttribute('data-package-name');
+        const className = this.getAttribute('data-class-name');
+        const methodName = this.getAttribute('data-method-name');
+        const returnType = this.getAttribute('data-return-type');
+
+        // Populate the method info form
+        document.getElementById('packageName').value = packageName;
+        document.getElementById('className').value = className;
+        document.getElementById('methodName').value = methodName;
+        document.getElementById('returnType').value = returnType;
+
+        // Get parameters from the method key
+        if (methodName === 'add' || methodName === 'subtract' || methodName === 'multiply') {
+          document.getElementById('parameters').value = 'int a, int b';
+        } else {
+          document.getElementById('parameters').value = '';
+        }
+
+        // Scroll to the test generation section
+        document.getElementById('test-generation').scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  }
+
+  // Utility Functions
+  function getTestStatusClass(status) {
+    switch (status) {
+      case 'PASSED':
+        return 'passed';
+      case 'FAILED':
+        return 'failed';
+      case 'BROKEN':
+        return 'broken';
+      case 'HEALED':
+        return 'healed';
+      default:
+        return '';
+    }
+  }
+
+  function getTestStatusBadgeClass(status) {
+    switch (status) {
+      case 'PASSED':
+        return 'status-passed';
+      case 'FAILED':
+        return 'status-failed';
+      case 'BROKEN':
+        return 'status-broken';
+      case 'HEALED':
+        return 'status-healed';
+      default:
+        return '';
+    }
+  }
+
+  // More functions for other sections...
+</script>
+</body>
+</html>

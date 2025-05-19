@@ -1,0 +1,380 @@
+/* styles.css - Custom styles for Project Oracle UI */
+
+:root {
+  --primary: #4361ee;
+  --secondary: #3f37c9;
+  --success: #4cc9f0;
+  --info: #4895ef;
+  --warning: #f72585;
+  --danger: #480ca8;
+  --light: #f8f9fa;
+  --dark: #212529;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f7fb;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  color: var(--primary) !important;
+}
+
+.nav-link {
+  font-weight: 500;
+}
+
+.nav-link.active {
+  color: var(--primary) !important;
+  border-bottom: 2px solid var(--primary);
+}
+
+.hero {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  padding: 3rem 0;
+  margin-bottom: 2rem;
+}
+
+.card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+  margin-bottom: 20px;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.card-header {
+  background-color: white;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--secondary);
+  border-color: var(--secondary);
+}
+
+.status-badge {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+}
+
+#codeInput, #testOutput, pre {
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 0.9rem;
+  border-radius: 5px;
+}
+
+.chart-container {
+  height: 300px;
+}
+
+.test-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.nav-tabs .nav-link {
+  margin-bottom: -1px;
+  border: 1px solid transparent;
+  border-top-left-radius: 0.25rem;
+  border-top-right-radius: 0.25rem;
+  color: #6c757d;
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--primary);
+  background-color: #fff;
+  border-color: #dee2e6 #dee2e6 #fff;
+}
+
+.test-item {
+  border-left: 3px solid transparent;
+  transition: background-color 0.2s ease;
+}
+
+.test-item:hover {
+  background-color: rgba(67, 97, 238, 0.05);
+}
+
+.test-item.passed {
+  border-left-color: #28a745;
+}
+
+.test-item.failed {
+  border-left-color: #dc3545;
+}
+
+.test-item.broken {
+  border-left-color: #fd7e14;
+}
+
+.test-item.healed {
+  border-left-color: #17a2b8;
+}
+
+.test-status {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 20px;
+}
+
+.status-passed {
+  background-color: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+}
+
+.status-failed {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.status-broken {
+  background-color: rgba(253, 126, 20, 0.1);
+  color: #fd7e14;
+}
+
+.status-healed {
+  background-color: rgba(23, 162, 184, 0.1);
+  color: #17a2b8;
+}
+
+footer {
+  background-color: var(--dark);
+  color: white;
+  padding: 2rem 0;
+  margin-top: 3rem;
+}
+
+/* Modal styles */
+.modal-content {
+  border-radius: 10px;
+  border: none;
+}
+
+.modal-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.modal-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Code highlighting */
+pre {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 5px;
+}
+
+/* Loading animations */
+.spinner-border {
+  height: 2rem;
+  width: 2rem;
+}
+
+/* Form controls */
+.form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+}
+
+/* Button states */
+.btn:focus {
+  box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+}
+
+/* Tooltips */
+.tooltip-inner {
+  background-color: var(--dark);
+}
+
+.bs-tooltip-auto[data-popper-placement^=top] .tooltip-arrow::before,
+.bs-tooltip-top .tooltip-arrow::before {
+  border-top-color: var(--dark);
+}
+
+.bs-tooltip-auto[data-popper-placement^=right] .tooltip-arrow::before,
+.bs-tooltip-end .tooltip-arrow::before {
+  border-right-color: var(--dark);
+}
+
+.bs-tooltip-auto[data-popper-placement^=bottom] .tooltip-arrow::before,
+.bs-tooltip-bottom .tooltip-arrow::before {
+  border-bottom-color: var(--dark);
+}
+
+.bs-tooltip-auto[data-popper-placement^=left] .tooltip-arrow::before,
+.bs-tooltip-start .tooltip-arrow::before {
+  border-left-color: var(--dark);
+}
+
+/* Progress bars */
+.progress {
+  height: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+/* Alerts */
+.alert {
+  border: none;
+  border-radius: 10px;
+}
+
+/* Tables */
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table th {
+  font-weight: 600;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(67, 97, 238, 0.05);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .card:hover {
+    transform: none;
+  }
+
+  .test-list {
+    max-height: 300px;
+  }
+
+  .chart-container {
+    height: 250px;
+  }
+
+  .d-flex.justify-content-between {
+    flex-direction: column;
+  }
+
+  .d-flex.justify-content-between button {
+    margin-top: 0.5rem;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(50px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.5s ease-in-out;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Additional utilities */
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.shadow-sm {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.shadow {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.text-small {
+  font-size: 0.875rem;
+}
+
+.border-light {
+  border-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Code editor styling */
+.code-area {
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  line-height: 1.5;
+  tab-size: 4;
+}
+
+/* Test execution result indicators */
+.execution-time {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.execution-success {
+  color: #28a745;
+}
+
+.execution-failure {
+  color: #dc3545;
+}
+
+/* Model quantization indicators */
+.quantization-level {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.level-fp32 {
+  background-color: rgba(67, 97, 238, 0.5);
+}
+
+.level-fp16 {
+  background-color: rgba(67, 97, 238, 0.6);
+}
+
+.level-int8 {
+  background-color: rgba(67, 97, 238, 0.7);
+}
+
+.level-int4 {
+  background-color: rgba(67, 97, 238, 0.8);
+}
