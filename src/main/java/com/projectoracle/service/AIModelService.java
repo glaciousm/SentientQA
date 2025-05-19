@@ -6,7 +6,6 @@ import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ModelZoo;
 import ai.djl.repository.zoo.ZooModel;
-import ai.djl.training.util.ProgressBar;
 import ai.djl.translate.TranslateException;
 
 import com.projectoracle.config.AIConfig;
@@ -35,6 +34,9 @@ public class AIModelService {
 
     @Autowired
     private AIConfig aiConfig;
+
+    @Autowired
+    private ModelDownloadService modelDownloadService;
 
     private final ConcurrentHashMap<String, ZooModel<String, String>> loadedModels = new ConcurrentHashMap<>();
 
@@ -90,20 +92,27 @@ public class AIModelService {
 
     /**
      * Load the language model (with lazy loading pattern)
+     * Will automatically download the model if it doesn't exist
      */
     public ZooModel<String, String> loadLanguageModel() throws ModelNotFoundException, MalformedModelException, IOException {
-        String modelKey = "language-" + aiConfig.getLanguageModelName();
+        String modelName = aiConfig.getLanguageModelName();
+        String modelKey = "language-" + modelName;
 
         return loadedModels.computeIfAbsent(modelKey, k -> {
             try {
-                logger.info("Loading language model: {}", aiConfig.getLanguageModelName());
+                logger.info("Loading language model: {}", modelName);
+
+                // Check if model exists, download if needed
+                if (!modelDownloadService.isModelPresent(modelName)) {
+                    logger.info("Model {} not found locally, downloading...", modelName);
+                    modelDownloadService.downloadModelIfNeeded(modelName);
+                }
 
                 // Set criteria for model loading
                 Criteria<String, String> criteria = Criteria.builder()
                                                             .setTypes(String.class, String.class)
                                                             .optModelPath(aiConfig.getLanguageModelPath())
                                                             .optEngine("PyTorch") // Using PyTorch engine
-                                                            .optProgress(new ProgressBar())
                                                             .optTranslator(new TextGenerationTranslator(1024))
                                                             .build();
 
@@ -111,6 +120,39 @@ public class AIModelService {
             } catch (ModelNotFoundException | MalformedModelException | IOException e) {
                 logger.error("Failed to load language model", e);
                 throw new RuntimeException("Failed to load language model", e);
+            }
+        });
+    }
+
+    /**
+     * Load the embeddings model
+     * Will automatically download the model if it doesn't exist
+     */
+    public ZooModel<String, String> loadEmbeddingsModel() throws ModelNotFoundException, MalformedModelException, IOException {
+        String modelName = aiConfig.getEmbeddingsModelName();
+        String modelKey = "embeddings-" + modelName;
+
+        return loadedModels.computeIfAbsent(modelKey, k -> {
+            try {
+                logger.info("Loading embeddings model: {}", modelName);
+
+                // Check if model exists, download if needed
+                if (!modelDownloadService.isModelPresent(modelName)) {
+                    logger.info("Model {} not found locally, downloading...", modelName);
+                    modelDownloadService.downloadModelIfNeeded(modelName);
+                }
+
+                // Set criteria for model loading
+                Criteria<String, String> criteria = Criteria.builder()
+                                                            .setTypes(String.class, String.class)
+                                                            .optModelPath(aiConfig.getEmbeddingsModelPath())
+                                                            .optEngine("PyTorch")
+                                                            .build();
+
+                return ModelZoo.loadModel(criteria);
+            } catch (ModelNotFoundException | MalformedModelException | IOException e) {
+                logger.error("Failed to load embeddings model", e);
+                throw new RuntimeException("Failed to load embeddings model", e);
             }
         });
     }

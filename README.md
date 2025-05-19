@@ -15,7 +15,7 @@ Project Oracle is a Java-based application that uses local AI models to automate
 
 ## Requirements
 
-- Java 17 or higher
+- Java 21 or higher
 - Maven 3.8 or higher
 - At least 4GB of RAM (8GB+ recommended)
 - 50GB of disk space for models and data
