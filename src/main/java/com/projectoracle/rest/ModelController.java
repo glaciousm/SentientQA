@@ -1,5 +1,7 @@
 package com.projectoracle.rest;
 
+import com.projectoracle.config.AIConfig;
+import com.projectoracle.service.AIModelService;
 import com.projectoracle.service.ModelQuantizationService;
 import com.projectoracle.service.ModelQuantizationService.QuantizationLevel;
 
@@ -24,6 +26,12 @@ public class ModelController {
 
     @Autowired
     private ModelQuantizationService modelQuantizationService;
+    
+    @Autowired
+    private AIConfig aiConfig;
+    
+    @Autowired
+    private AIModelService aiModelService;
 
     /**
      * Get available quantization levels
@@ -98,6 +106,67 @@ public class ModelController {
     }
 
     /**
+     * Update model quantization settings
+     */
+    @PostMapping("/quantization/settings")
+    public ResponseEntity<QuantizationSettings> updateQuantizationSettings(
+            @RequestBody QuantizationSettings settings) {
+        
+        logger.info("Updating quantization settings: enabled={}, level={}", 
+                settings.isEnabled(), settings.getLevel());
+        
+        try {
+            // Convert string to QuantizationLevel enum for validation
+            if (settings.getLevel() != null) {
+                QuantizationLevel level = parseQuantizationLevel(settings.getLevel());
+                if (level == null) {
+                    return ResponseEntity.badRequest().build();
+                }
+            }
+            
+            // Update settings in memory
+            // Note: In a production application, we would persist these settings to disk
+            boolean oldValue = aiConfig.isQuantizeLanguageModel();
+            
+            // We're using reflection to update the private field in AIConfig
+            // In a real application, the AIConfig would have setter methods
+            java.lang.reflect.Field quantizeField = AIConfig.class.getDeclaredField("quantizeLanguageModel");
+            quantizeField.setAccessible(true);
+            quantizeField.set(aiConfig, settings.isEnabled());
+            
+            if (settings.getLevel() != null) {
+                java.lang.reflect.Field levelField = AIConfig.class.getDeclaredField("quantizationLevel");
+                levelField.setAccessible(true);
+                levelField.set(aiConfig, settings.getLevel());
+            }
+            
+            // If quantization was disabled and is now enabled, or vice versa,
+            // or if the level has changed, unload models so they'll be reloaded with the new settings
+            if (oldValue != settings.isEnabled() || 
+                (settings.getLevel() != null && !settings.getLevel().equals(aiConfig.getQuantizationLevel()))) {
+                // Unload language model so it will be reloaded with new settings
+                aiModelService.unloadModel("language-" + aiConfig.getLanguageModelName());
+            }
+            
+            return ResponseEntity.ok(settings);
+        } catch (Exception e) {
+            logger.error("Error updating quantization settings", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Get current quantization settings
+     */
+    @GetMapping("/quantization/settings")
+    public ResponseEntity<QuantizationSettings> getQuantizationSettings() {
+        QuantizationSettings settings = new QuantizationSettings();
+        settings.setEnabled(aiConfig.isQuantizeLanguageModel());
+        settings.setLevel(aiConfig.getQuantizationLevel());
+        return ResponseEntity.ok(settings);
+    }
+    
+    /**
      * Result of model quantization
      */
     public static class QuantizationResult {
@@ -127,6 +196,30 @@ public class ModelController {
 
         public void setFilePath(String filePath) {
             this.filePath = filePath;
+        }
+    }
+    
+    /**
+     * Model quantization settings
+     */
+    public static class QuantizationSettings {
+        private boolean enabled;
+        private String level;
+        
+        public boolean isEnabled() {
+            return enabled;
+        }
+        
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+        
+        public String getLevel() {
+            return level;
+        }
+        
+        public void setLevel(String level) {
+            this.level = level;
         }
     }
 }

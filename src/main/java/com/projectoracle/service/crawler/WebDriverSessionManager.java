@@ -10,10 +10,13 @@ import org.openqa.selenium.edge.EdgeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import com.projectoracle.config.CrawlerConfig;
 
+import io.github.bonigarcia.wdm.WebDriverManager;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
 import java.time.Duration;
@@ -34,9 +37,30 @@ public class WebDriverSessionManager {
 
     @Autowired
     private CrawlerConfig crawlerConfig;
+    
+    @Autowired
+    @Qualifier("chromeDriver")
+    private WebDriver chromeDriverTemplate;
+    
+    @Autowired
+    @Qualifier("firefoxDriver")
+    private WebDriver firefoxDriverTemplate;
+    
+    @Autowired
+    @Qualifier("edgeDriver")
+    private WebDriver edgeDriverTemplate;
 
     // Map of session ID to WebDriver instances
     private final Map<String, WebDriverSession> activeSessions = new ConcurrentHashMap<>();
+    
+    @PostConstruct
+    public void initialize() {
+        // Setup WebDriverManager for all driver types
+        WebDriverManager.chromedriver().setup();
+        WebDriverManager.firefoxdriver().setup();
+        WebDriverManager.edgedriver().setup();
+        logger.info("WebDriverManager initialized for all browser types");
+    }
 
     // Available browser types
     public enum BrowserType {
@@ -213,6 +237,7 @@ public class WebDriverSessionManager {
      * Create a Chrome WebDriver
      */
     private WebDriver createChromeDriver(boolean headless) {
+        WebDriverManager.chromedriver().setup();
         ChromeOptions options = new ChromeOptions();
 
         // Configure browser options
@@ -236,6 +261,7 @@ public class WebDriverSessionManager {
      * Create a Firefox WebDriver
      */
     private WebDriver createFirefoxDriver(boolean headless) {
+        WebDriverManager.firefoxdriver().setup();
         FirefoxOptions options = new FirefoxOptions();
 
         // Configure browser options
@@ -255,6 +281,7 @@ public class WebDriverSessionManager {
      * Create an Edge WebDriver
      */
     private WebDriver createEdgeDriver(boolean headless) {
+        WebDriverManager.edgedriver().setup();
         EdgeOptions options = new EdgeOptions();
 
         // Configure browser options

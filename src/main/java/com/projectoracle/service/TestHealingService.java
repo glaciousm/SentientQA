@@ -45,7 +45,7 @@ public class TestHealingService {
     private TestGenerationService testGenerationService;
 
     @Autowired
-    private TestExecutionService testExecutionService;
+    private EnhancedTestExecutionService testExecutionService;
 
     @Autowired
     private AIModelService aiModelService;

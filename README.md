@@ -33,7 +33,7 @@
 
 ### Web Dashboard
 
-Visit `http://localhost:8080` to access the built-in UI:
+Visit `http://localhost:8080` to access the built-in UI. You'll be prompted to log in with the default credentials (admin/admin):
 
 - **Analyze Code**  
   Upload or point to Java source code; the system parses classes and methods.
@@ -50,25 +50,38 @@ Visit `http://localhost:8080` to access the built-in UI:
 - **Self-Healing** *(Prototype)*  
   Attempt basic AI-driven fixes for failing tests.
 
+- **H2 Console**
+  Access the embedded database at `http://localhost:8080/h2-console` with credentials (sa/password).
+
 ### REST API
 
-All features are available via `/api/v1/...` endpoints. Examples:
+All features are available via `/api/v1/...` endpoints. Authentication is required for secured endpoints:
 
 ```bash
-# Health check
+# First, get an authentication token (Basic Auth)
+TOKEN=$(curl -s -u admin:admin http://localhost:8080/api/v1/auth/token)
+
+# Health check (public endpoint)
 curl http://localhost:8080/api/v1/health
 
-# Analyze a file
-curl "http://localhost:8080/api/v1/analyze/file?filePath=src/Main.java"
+# Analyze a file (secured)
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/v1/analyze/file?filePath=src/Main.java"
 
-# Generate tests for a method
-curl -X POST http://localhost:8080/api/v1/generate/test      -H "Content-Type: application/json"      -d '{ "className":"com.example.Main", "methodName":"compute", ... }'
+# Generate tests for a method (secured)
+curl -X POST http://localhost:8080/api/v1/generate/test \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{ "className":"com.example.Main", "methodName":"compute", ... }'
 
-# Execute a test by ID
-curl -X POST "http://localhost:8080/api/v1/enhanced-tests/123/execute?waitForResult=true"
+# Execute a test by ID (secured)
+curl -X POST "http://localhost:8080/api/v1/enhanced-tests/123/execute?waitForResult=true" \
+  -H "Authorization: Bearer $TOKEN"
 
-# List reports
-curl http://localhost:8080/api/v1/reports/list
+# List reports (secured)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/reports/list
+
+# Get actuator health (admin only)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/management/health
 ```
 
 Refer to the source Javadoc or log output for full request/response models.
@@ -86,15 +99,20 @@ Refer to the source Javadoc or log output for full request/response models.
 
 ## Dependencies
 
-- Spring Boot 3
-- Deep Java Library (DJL) + HuggingFace GPT-2
-- JavaParser
-- JUnit 5
-- Selenium WebDriver
+- Spring Boot 3.4.5
+- Deep Java Library (DJL) 0.33.0 + HuggingFace GPT-2
+- JavaParser 3.26.4
+- JUnit Jupiter 5.12.2
+- Selenium WebDriver 4.24.0
+- WebDriverManager 5.7.0
+- H2 Database (for repository persistence)
+- Spring Security (for REST API protection)
+- Spring Cache with Caffeine (for performance optimization)
 - Jackson, Lombok, SLF4J/Logback
 - Apache POI (Excel reports)
+- JaCoCo (for code coverage analysis)
 
-> **Note:** Unused dependencies in `pom.xml` (e.g., Tribuo, Lucene, RocksDB) can be removed to slim the build.
+> **Note:** All unused dependencies have been removed, and the codebase has been optimized for performance and security.
 
 ## Conclusion
 

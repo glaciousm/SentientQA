@@ -26,15 +26,15 @@ These core functionalities have been fully implemented and validated:
 
 To manage implementation efficiently (given token constraints), tasks are grouped into concise stages:
 
-- **Stage 1 (Immediate Short-Term):**
-  1. Complete placeholder features (In Progress, High)
-  2. Consolidate redundant services (Planned, Medium)
-  3. Remove unused dependencies (Planned, Medium)
+- **Stage 1 (Immediate Short-Term):** ✅ COMPLETED
+  1. Complete placeholder features (Completed, High)
+  2. Consolidate redundant services (Completed, Medium)
+  3. Remove unused dependencies (Completed, Medium)
 
-- **Stage 2 (Short-Term):**
-  1. Reorganize package structure (Planned, Low)
-  2. Improve error handling & thread safety (Planned, High)
-  3. Enable model quantization (Planned, High)
+- **Stage 2 (Short-Term):** ✅ COMPLETED
+  1. Reorganize package structure (Completed, Low)
+  2. Improve error handling & thread safety (Completed, High)
+  3. Enable model quantization (Completed, High)
 
 - **Stage 3 (Short-Term):**
   1. Lazy-load AI models on first use (Planned, Medium)
@@ -73,19 +73,21 @@ To manage implementation efficiently (given token constraints), tasks are groupe
 
 ## Short-Term Goals (1–3 Months)
 
-| Task                                                                                 | Status      | Priority | Notes                                          |
-|--------------------------------------------------------------------------------------|-------------|----------|------------------------------------------------|
-| 1. Complete placeholder features (proper crawl-stop, API discovery persistence)     | In Progress | High     | Implement stopping crawl & persist discovery.  |
-| 2. Consolidate redundant services (remove simulated execution)                       | Planned     | Medium   | Merge ExecutionService into Enhanced version.  |
-| 3. Remove unused dependencies (Tribuo, Lucene, RocksDB)                              | Planned     | Medium   | Slim down `pom.xml` until needed.              |
-| 4. Reorganize package structure (API vs. UI crawler separation)                      | Planned     | Low      | Clarify module boundaries.                     |
-| 5. Improve error handling & thread safety in controllers/services                    | Planned     | High     | Validate inputs & handle AI model failures.    |
-| 6. Enable model quantization (FP16/INT8)                                             | Planned     | High     | Reduce memory footprint for AI models.         |
-| 7. Lazy-load AI models on first use                                                  | Planned     | Medium   | Speed up initial startup.                      |
-| 8. Fine-tune thread pools for parallel tasks                                         | Planned     | Medium   | Optimize parallel test generation/execution.   |
-| 9. Enhance UI responsiveness (lazy-load lists, loading indicators)                   | Planned     | Low      | Improve dashboard UX.                          |
-| 10. Write unit tests for core services                                               | Planned     | High     | Prevent regressions in critical modules.       |
-| 11. Integrate static analysis tools (SpotBugs, Checkstyle)                           | Planned     | Low      | Enforce code quality and style.                |
+| Task                                                                                 | Status     | Priority | Notes                                          |
+|--------------------------------------------------------------------------------------|------------|----------|------------------------------------------------|
+| 1. ✅ Complete placeholder features (proper crawl-stop, API discovery persistence)    | Completed  | High     | Implement stopping crawl & persist discovery.  |
+| 2. ✅ Consolidate redundant services (remove simulated execution)                     | Completed  | Medium   | Merge ExecutionService into Enhanced version.  |
+| 3. ✅ Remove unused dependencies (Tribuo, Lucene, RocksDB)                            | Completed  | Medium   | Slim down `pom.xml` until needed.              |
+| 4. ✅ Reorganize package structure (API vs. UI crawler separation)                    | Completed  | Low      | Clarify module boundaries.                     |
+| 5. ✅ Improve error handling & thread safety in controllers/services                  | Completed  | High     | Validate inputs & handle AI model failures.    |
+| 6. ✅ Enable model quantization (FP16/INT8)                                           | Completed  | High     | Reduce memory footprint for AI models.         |
+| 7. ✅ Add database, security, and cache configuration                                 | Completed  | High     | Support repository persistence and security.   |
+| 8. ✅ Add WebDriverManager for Selenium browser management                            | Completed  | Medium   | Automatic browser driver management.           |
+| 9. ✅ Improve thread pools for parallel tasks                                         | Completed  | Medium   | Optimize parallel test generation/execution.   |
+| 10. Lazy-load AI models on first use                                                 | Planned    | Medium   | Speed up initial startup.                      |
+| 11. Enhance UI responsiveness (lazy-load lists, loading indicators)                  | Planned    | Low      | Improve dashboard UX.                          |
+| 12. Write unit tests for core services                                               | Planned    | High     | Prevent regressions in critical modules.       |
+| 13. Integrate static analysis tools (SpotBugs, Checkstyle)                           | Planned    | Low      | Enforce code quality and style.                |
 
 ---
 

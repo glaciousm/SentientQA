@@ -81,12 +81,47 @@ public class APITestController {
      */
     @GetMapping("/discovery/{discoveryId}")
     public ResponseEntity<DiscoveryResponse> getDiscoveryResults(@PathVariable String discoveryId) {
-        // This is a placeholder. In a real implementation, we would track
-        // discovery jobs and return the actual results.
+        // Get the actual endpoints from the repository
+        List<APIEndpoint> endpoints = apiTestGenerationService.getAllAPIEndpoints();
+        
         return ResponseEntity.ok(
                 new DiscoveryResponse("completed", "Discovery and test generation completed",
-                        new DiscoveryResult(10, 5, 5))
+                        new DiscoveryResult(
+                            0, // We don't track pages analyzed in the repository
+                            endpoints.size(),
+                            0) // We don't track tests generated per discovery job
+                        )
         );
+    }
+    
+    /**
+     * Get all API endpoints
+     */
+    @GetMapping("/endpoints")
+    public ResponseEntity<List<APIEndpoint>> getAllEndpoints() {
+        List<APIEndpoint> endpoints = apiTestGenerationService.getAllAPIEndpoints();
+        return ResponseEntity.ok(endpoints);
+    }
+    
+    /**
+     * Get API endpoints by URL pattern
+     */
+    @GetMapping("/endpoints/search")
+    public ResponseEntity<List<APIEndpoint>> searchEndpoints(
+            @RequestParam(required = false) String urlPattern,
+            @RequestParam(required = false) String method) {
+        
+        List<APIEndpoint> endpoints;
+        
+        if (urlPattern != null && !urlPattern.isEmpty()) {
+            endpoints = apiTestGenerationService.findEndpointsByUrlPattern(urlPattern);
+        } else if (method != null && !method.isEmpty()) {
+            endpoints = apiTestGenerationService.findEndpointsByMethod(method);
+        } else {
+            endpoints = apiTestGenerationService.getAllAPIEndpoints();
+        }
+        
+        return ResponseEntity.ok(endpoints);
     }
 
     /**

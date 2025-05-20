@@ -47,9 +47,13 @@ public class UICrawlerService {
 
     private final Map<String, Page> pageRegistry = new ConcurrentHashMap<>();
     private final Set<String> visitedUrls = Collections.synchronizedSet(new HashSet<>());
-    private final ExecutorService executorService = Executors.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors()
-    );
+    private ExecutorService executorService;
+    
+    // Flag to control crawling state
+    private volatile boolean stopCrawling = false;
+    
+    // Current crawl ID
+    private String currentCrawlId;
 
     /**
      * Crawl a web application starting from the given URL
@@ -59,11 +63,30 @@ public class UICrawlerService {
      * @return the list of discovered pages
      */
     public List<Page> crawlApplication(String baseUrl, int maxPages) {
-        logger.info("Starting application crawl from: {}", baseUrl);
+        return crawlApplication(baseUrl, maxPages, null);
+    }
+
+    /**
+     * Crawl a web application starting from the given URL with crawl ID
+     *
+     * @param baseUrl the starting URL
+     * @param maxPages maximum number of pages to crawl
+     * @param crawlId unique identifier for this crawl operation
+     * @return the list of discovered pages
+     */
+    public List<Page> crawlApplication(String baseUrl, int maxPages, String crawlId) {
+        logger.info("Starting application crawl from: {} with ID: {}", baseUrl, crawlId);
 
         // Clear previous crawl data
         pageRegistry.clear();
         visitedUrls.clear();
+        stopCrawling = false;
+        currentCrawlId = crawlId;
+        
+        // Initialize executor service
+        if (executorService == null || executorService.isShutdown()) {
+            executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        }
 
         try {
             // Start the crawl process
@@ -89,6 +112,12 @@ public class UICrawlerService {
      * @param maxPages maximum number of pages to crawl
      */
     private void crawlPage(String url, String baseUrl, int maxPages) {
+        // Check if we should stop crawling
+        if (stopCrawling) {
+            logger.debug("Crawling stopped as requested");
+            return;
+        }
+        
         // Check if we already visited this URL or reached the limit
         if (visitedUrls.contains(url) || visitedUrls.size() >= maxPages) {
             return;
@@ -496,5 +525,44 @@ public class UICrawlerService {
         // to generate a robust XPath
 
         return "(//tagname)[1]".replace("tagname", element.getTagName());
+    }
+    
+    /**
+     * Stop the current crawl operation
+     * 
+     * @param crawlId the ID of the crawl to stop (if it matches the current crawl)
+     * @return true if crawl was stopped, false if not active or ID doesn't match
+     */
+    public boolean stopCrawl(String crawlId) {
+        if (currentCrawlId != null && currentCrawlId.equals(crawlId)) {
+            logger.info("Stopping crawl with ID: {}", crawlId);
+            stopCrawling = true;
+            
+            // Try to initiate an orderly shutdown of the executor
+            if (executorService != null && !executorService.isShutdown()) {
+                executorService.shutdownNow();
+            }
+            
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Check if a crawl is currently active
+     * 
+     * @return true if a crawl is in progress
+     */
+    public boolean isCrawlActive() {
+        return executorService != null && !executorService.isTerminated() && !stopCrawling;
+    }
+    
+    /**
+     * Get the current results of the crawl (can be called while crawling is in progress)
+     * 
+     * @return the list of pages discovered so far
+     */
+    public List<Page> getCurrentResults() {
+        return new ArrayList<>(pageRegistry.values());
     }
 }

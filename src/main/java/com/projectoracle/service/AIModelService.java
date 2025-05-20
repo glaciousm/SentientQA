@@ -7,9 +7,12 @@ import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ModelZoo;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
+import ai.djl.ndarray.types.DataType;
 
 import com.projectoracle.config.AIConfig;
 import com.projectoracle.service.translator.TextGenerationTranslator;
+import com.projectoracle.service.ModelQuantizationService;
+import com.projectoracle.service.ModelQuantizationService.QuantizationLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +40,9 @@ public class AIModelService {
 
     @Autowired
     private ModelDownloadService modelDownloadService;
+    
+    @Autowired
+    private ModelQuantizationService quantizationService;
 
     private final ConcurrentHashMap<String, ZooModel<String, String>> loadedModels = new ConcurrentHashMap<>();
 
@@ -64,6 +70,7 @@ public class AIModelService {
             logger.info("Models directory: {}", aiConfig.getBaseModelDir());
             logger.info("Using GPU: {}", aiConfig.isUseGpu());
             logger.info("Memory limit: {} MB", aiConfig.getMemoryLimitMb());
+            logger.info("Quantization enabled: {}", aiConfig.isQuantizeLanguageModel());
         } catch (IOException e) {
             logger.error("Failed to initialize AI model service", e);
             throw new RuntimeException("Failed to initialize AI model service", e);
@@ -108,15 +115,28 @@ public class AIModelService {
                     modelDownloadService.downloadModelIfNeeded(modelName);
                 }
 
-                // Set criteria for model loading
-                Criteria<String, String> criteria = Criteria.builder()
-                                                            .setTypes(String.class, String.class)
-                                                            .optModelPath(aiConfig.getLanguageModelPath())
-                                                            .optEngine("PyTorch") // Using PyTorch engine
-                                                            .optTranslator(new TextGenerationTranslator(1024))
-                                                            .build();
-
-                return ModelZoo.loadModel(criteria);
+                // Determine whether to use quantization
+                Criteria.Builder criteriaBuilder;
+                
+                if (aiConfig.isQuantizeLanguageModel()) {
+                    // Use quantized model (FP16 or INT8 based on config)
+                    QuantizationLevel level = aiConfig.getQuantizationLevel().equals("INT8") ? 
+                                QuantizationLevel.INT8 : QuantizationLevel.FP16;
+                    
+                    logger.info("Loading quantized model with level: {}", level);
+                    criteriaBuilder = quantizationService.getQuantizedModelCriteria(modelName, level);
+                    criteriaBuilder.optTranslator(new TextGenerationTranslator(1024));
+                } else {
+                    // Use regular model (FP32)
+                    criteriaBuilder = Criteria.builder()
+                            .setTypes(String.class, String.class)
+                            .optModelPath(aiConfig.getLanguageModelPath())
+                            .optEngine("PyTorch")
+                            .optTranslator(new TextGenerationTranslator(1024));
+                }
+                
+                // Build criteria and load model
+                return ModelZoo.loadModel(criteriaBuilder.build());
             } catch (ModelNotFoundException | MalformedModelException | IOException e) {
                 logger.error("Failed to load language model", e);
                 throw new RuntimeException("Failed to load language model", e);

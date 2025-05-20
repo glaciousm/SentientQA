@@ -10,6 +10,7 @@ import com.projectoracle.model.Page;
 import com.projectoracle.model.TestCase;
 import com.projectoracle.service.AIModelService;
 import com.projectoracle.repository.TestCaseRepository;
+import com.projectoracle.repository.APIEndpointRepository;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -34,6 +35,9 @@ public class APITestGenerationService {
 
     @Autowired
     private TestCaseRepository testCaseRepository;
+    
+    @Autowired
+    private APIEndpointRepository apiEndpointRepository;
 
     /**
      * Represents a detected API endpoint
@@ -87,7 +91,10 @@ public class APITestGenerationService {
             }
         }
 
-        logger.info("Extracted {} API endpoints", endpoints.size());
+        // Persist discovered endpoints
+        apiEndpointRepository.saveEndpoints(endpoints);
+
+        logger.info("Extracted and persisted {} API endpoints", endpoints.size());
         return endpoints;
     }
 
@@ -273,6 +280,35 @@ public class APITestGenerationService {
 
         logger.info("Generated {} API tests", testCases.size());
         return testCases;
+    }
+    
+    /**
+     * Get all API endpoints from repository
+     * 
+     * @return List of all stored API endpoints
+     */
+    public List<APIEndpoint> getAllAPIEndpoints() {
+        return apiEndpointRepository.findAll();
+    }
+    
+    /**
+     * Find API endpoints by URL pattern
+     * 
+     * @param urlPattern Pattern to search for in URL
+     * @return List of matching API endpoints
+     */
+    public List<APIEndpoint> findEndpointsByUrlPattern(String urlPattern) {
+        return apiEndpointRepository.findByUrlPattern(urlPattern);
+    }
+    
+    /**
+     * Find API endpoints by HTTP method
+     * 
+     * @param method HTTP method to filter by
+     * @return List of matching API endpoints
+     */
+    public List<APIEndpoint> findEndpointsByMethod(String method) {
+        return apiEndpointRepository.findByMethod(method);
     }
 
     /**

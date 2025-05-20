@@ -2,7 +2,7 @@ package com.projectoracle.rest;
 
 import com.projectoracle.model.TestCase;
 import com.projectoracle.repository.TestCaseRepository;
-import com.projectoracle.service.TestExecutionService;
+import com.projectoracle.service.EnhancedTestExecutionService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +27,7 @@ public class TestController {
     private TestCaseRepository testCaseRepository;
 
     @Autowired
-    private TestExecutionService testExecutionService;
+    private EnhancedTestExecutionService testExecutionService;
 
     /**
      * Get all test cases
@@ -56,8 +56,23 @@ public class TestController {
      */
     @PostMapping
     public ResponseEntity<TestCase> saveTest(@RequestBody TestCase testCase) {
+        if (testCase == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        if (testCase.getName() == null || testCase.getName().trim().isEmpty()) {
+            logger.warn("Attempted to save test case with empty name");
+            throw new IllegalArgumentException("Test case name cannot be empty");
+        }
+        
         logger.info("Saving test case: {}", testCase.getName());
-        return ResponseEntity.ok(testCaseRepository.save(testCase));
+        try {
+            TestCase savedTestCase = testCaseRepository.save(testCase);
+            return ResponseEntity.ok(savedTestCase);
+        } catch (Exception e) {
+            logger.error("Error saving test case: {}", e.getMessage(), e);
+            throw e; // Global handler will catch this
+        }
     }
 
     /**
@@ -83,14 +98,26 @@ public class TestController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTest(@PathVariable UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Test case ID cannot be null");
+        }
+        
         logger.info("Deleting test case: {}", id);
 
-        if (testCaseRepository.findById(id) == null) {
+        // Check if test case exists
+        TestCase testCase = testCaseRepository.findById(id);
+        if (testCase == null) {
+            logger.warn("Test case not found for deletion: {}", id);
             return ResponseEntity.notFound().build();
         }
 
-        testCaseRepository.deleteById(id);
-        return ResponseEntity.ok().build();
+        try {
+            testCaseRepository.deleteById(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            logger.error("Error deleting test case: {}", e.getMessage(), e);
+            throw e; // Global handler will catch this
+        }
     }
 
     /**
@@ -125,23 +152,39 @@ public class TestController {
      */
     @PostMapping("/{id}/execute")
     public ResponseEntity<TestCase> executeTest(@PathVariable UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Test case ID cannot be null");
+        }
+        
         logger.info("Executing test case: {}", id);
 
+        // Validate test case exists
         TestCase testCase = testCaseRepository.findById(id);
         if (testCase == null) {
+            logger.warn("Test case not found for execution: {}", id);
             return ResponseEntity.notFound().build();
+        }
+        
+        // Validate test case has source code
+        if (testCase.getSourceCode() == null || testCase.getSourceCode().trim().isEmpty()) {
+            logger.error("Cannot execute test with empty source code: {}", id);
+            throw new IllegalArgumentException("Cannot execute test with empty source code");
         }
 
         try {
+            // Track current thread for diagnostics
+            String threadName = Thread.currentThread().getName();
+            logger.debug("Starting test execution on thread: {}", threadName);
+            
             // Start execution asynchronously
             CompletableFuture<TestCase> future = testExecutionService.executeTest(id);
 
             // Return the test case with updated status immediately
             // The execution will continue in the background
-            return ResponseEntity.ok(testCaseRepository.findById(id));
+            return ResponseEntity.accepted().body(testCaseRepository.findById(id));
         } catch (Exception e) {
             logger.error("Error executing test case: {}", id, e);
-            return ResponseEntity.internalServerError().build();
+            throw new RuntimeException("Failed to execute test: " + e.getMessage(), e);
         }
     }
 

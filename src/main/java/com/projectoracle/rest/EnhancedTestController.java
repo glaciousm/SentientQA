@@ -58,12 +58,18 @@ public class EnhancedTestController {
      * Execute a test case
      */
     @PostMapping("/{id}/execute")
-    public ResponseEntity<TestExecutionResponse> executeTest(@PathVariable UUID id,
+    public ResponseEntity<TestExecutionResponse> executeTest(
+            @PathVariable UUID id,
             @RequestParam(defaultValue = "false") boolean waitForResult) {
+        if (id == null) {
+            throw new IllegalArgumentException("Test ID cannot be null");
+        }
+        
         logger.info("Executing test case: {}", id);
 
         TestCase testCase = testCaseRepository.findById(id);
         if (testCase == null) {
+            logger.warn("Test case not found for execution: {}", id);
             return ResponseEntity.notFound().build();
         }
 
@@ -74,6 +80,7 @@ public class EnhancedTestController {
             if (waitForResult) {
                 // Wait for the result if requested
                 try {
+                    // Set a reasonable timeout
                     TestCase result = future.get(30, TimeUnit.SECONDS);
                     return ResponseEntity.ok(new TestExecutionResponse(
                             "completed",
@@ -81,17 +88,33 @@ public class EnhancedTestController {
                             result.getStatus().toString(),
                             result.getLastExecutionResult()
                     ));
-                } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                    logger.error("Error waiting for test execution: {}", id, e);
+                } catch (InterruptedException e) {
+                    logger.warn("Test execution was interrupted: {}", id);
+                    return ResponseEntity.ok(new TestExecutionResponse(
+                            "cancelled",
+                            "Test execution was cancelled",
+                            testCase.getStatus().toString(),
+                            null
+                    ));
+                } catch (ExecutionException e) {
+                    logger.error("Error during test execution: {}", id, e);
                     return ResponseEntity.ok(new TestExecutionResponse(
                             "error",
-                            "Error executing test: " + e.getMessage(),
+                            "Error executing test: " + e.getCause().getMessage(),
                             null,
+                            null
+                    ));
+                } catch (TimeoutException e) {
+                    logger.warn("Test execution timed out waiting for result: {}", id);
+                    return ResponseEntity.ok(new TestExecutionResponse(
+                            "timeout",
+                            "Test execution is still running, but the wait timeout was reached",
+                            testCase.getStatus().toString(),
                             null
                     ));
                 }
             } else {
-                // Return immediately
+                // Return immediately with 202 Accepted status
                 return ResponseEntity.accepted().body(new TestExecutionResponse(
                         "started",
                         "Test execution started",
@@ -101,10 +124,44 @@ public class EnhancedTestController {
             }
         } catch (Exception e) {
             logger.error("Error executing test case: {}", id, e);
-            return ResponseEntity.internalServerError().body(new TestExecutionResponse(
-                    "error",
-                    "Error executing test: " + e.getMessage(),
-                    null,
+            throw new RuntimeException("Failed to execute test: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Cancel a running test execution
+     */
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<TestExecutionResponse> cancelTestExecution(@PathVariable UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Test ID cannot be null");
+        }
+        
+        logger.info("Cancelling test execution: {}", id);
+        
+        // Check that the test exists
+        TestCase testCase = testCaseRepository.findById(id);
+        if (testCase == null) {
+            logger.warn("Test case not found for cancellation: {}", id);
+            return ResponseEntity.notFound().build();
+        }
+        
+        boolean cancelled = testExecutionService.cancelTestExecution(id);
+        
+        if (cancelled) {
+            logger.info("Test execution cancelled successfully: {}", id);
+            return ResponseEntity.ok(new TestExecutionResponse(
+                    "cancelled",
+                    "Test execution cancelled successfully",
+                    testCase.getStatus().toString(),
+                    null
+            ));
+        } else {
+            logger.info("Test execution not found or already completed: {}", id);
+            return ResponseEntity.ok(new TestExecutionResponse(
+                    "not_running",
+                    "Test execution was not running or already completed",
+                    testCase.getStatus().toString(),
                     null
             ));
         }

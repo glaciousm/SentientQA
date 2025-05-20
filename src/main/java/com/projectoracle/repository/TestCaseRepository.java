@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +34,7 @@ public class TestCaseRepository {
     private static final Logger logger = LoggerFactory.getLogger(TestCaseRepository.class);
     private final ObjectMapper objectMapper;
     private final Map<UUID, TestCase> testCaseCache = new ConcurrentHashMap<>();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     @Value("${app.directories.output:output}")
     private String outputDir;
@@ -94,30 +97,44 @@ public class TestCaseRepository {
      *
      * @param testCase the test case to save
      * @return the saved test case
+     * @throws IOException if there's an error saving to disk
      */
     public TestCase save(TestCase testCase) {
-        if (testCase.getId() == null) {
-            testCase.setId(UUID.randomUUID());
+        if (testCase == null) {
+            throw new IllegalArgumentException("Test case cannot be null");
         }
-
-        testCase.setModifiedAt(LocalDateTime.now());
-        testCaseCache.put(testCase.getId(), testCase);
-
+        
+        // Acquire write lock for thread safety during ID generation and cache update
+        lock.writeLock().lock();
         try {
-            Path testCasePath = getTestCasePath(testCase.getId());
-            objectMapper.writeValue(testCasePath.toFile(), testCase);
-
-            // Also save the actual test source code to a Java file
-            if (testCase.getSourceCode() != null && !testCase.getSourceCode().isEmpty()) {
-                saveTestSourceCode(testCase);
+            // Generate ID if not present
+            if (testCase.getId() == null) {
+                testCase.setId(UUID.randomUUID());
             }
 
-            logger.info("Saved test case: {}", testCase.getId());
+            testCase.setModifiedAt(LocalDateTime.now());
+            
+            // Create a defensive copy to prevent further modifications from affecting the saved version
+            TestCase testCaseCopy = testCase.deepCopy();
+            testCaseCache.put(testCaseCopy.getId(), testCaseCopy);
+
+            // Persist to disk
+            Path testCasePath = getTestCasePath(testCaseCopy.getId());
+            objectMapper.writeValue(testCasePath.toFile(), testCaseCopy);
+
+            // Also save the actual test source code to a Java file
+            if (testCaseCopy.getSourceCode() != null && !testCaseCopy.getSourceCode().isEmpty()) {
+                saveTestSourceCode(testCaseCopy);
+            }
+
+            logger.info("Saved test case: {}", testCaseCopy.getId());
+            return testCaseCopy;
         } catch (IOException e) {
             logger.error("Failed to save test case: {}", testCase.getId(), e);
+            throw new RuntimeException("Failed to save test case: " + e.getMessage(), e);
+        } finally {
+            lock.writeLock().unlock();
         }
-
-        return testCase;
     }
 
     /**
@@ -141,7 +158,19 @@ public class TestCaseRepository {
      * @return the test case, or null if not found
      */
     public TestCase findById(UUID id) {
-        return testCaseCache.get(id);
+        if (id == null) {
+            throw new IllegalArgumentException("ID cannot be null");
+        }
+        
+        lock.readLock().lock();
+        try {
+            TestCase testCase = testCaseCache.get(id);
+            
+            // Create a defensive copy to prevent modifications to the cached version
+            return testCase != null ? testCase.deepCopy() : null;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     /**
@@ -150,7 +179,15 @@ public class TestCaseRepository {
      * @return a list of all test cases
      */
     public List<TestCase> findAll() {
-        return new ArrayList<>(testCaseCache.values());
+        lock.readLock().lock();
+        try {
+            // Create defensive copies of all test cases
+            return testCaseCache.values().stream()
+                                .map(TestCase::deepCopy)
+                                .collect(Collectors.toList());
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     /**
@@ -193,16 +230,42 @@ public class TestCaseRepository {
      * Delete a test case
      *
      * @param id the ID of the test case to delete
+     * @throws IOException if there's an error deleting the file
      */
     public void deleteById(UUID id) {
-        testCaseCache.remove(id);
-
+        if (id == null) {
+            throw new IllegalArgumentException("ID cannot be null");
+        }
+        
+        lock.writeLock().lock();
         try {
+            testCaseCache.remove(id);
+
             Path testCasePath = getTestCasePath(id);
-            Files.deleteIfExists(testCasePath);
+            boolean deleted = Files.deleteIfExists(testCasePath);
+            
+            if (deleted) {
+                logger.info("Deleted test case file: {}", id);
+            } else {
+                logger.warn("Test case file not found for deletion: {}", id);
+            }
+            
+            // Also try to delete the Java source file if it exists
+            TestCase testCase = testCaseCache.get(id);
+            if (testCase != null && testCase.getClassName() != null && testCase.getPackageName() != null) {
+                String packagePath = testCase.getPackageName().replace('.', '/');
+                Path sourcePath = Paths.get(outputDir, "generated-tests", packagePath);
+                Path javaFilePath = sourcePath.resolve(testCase.getClassName() + ".java");
+                
+                Files.deleteIfExists(javaFilePath);
+            }
+            
             logger.info("Deleted test case: {}", id);
         } catch (IOException e) {
             logger.error("Failed to delete test case file: {}", id, e);
+            throw new RuntimeException("Failed to delete test case: " + e.getMessage(), e);
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 

@@ -27,6 +27,9 @@ public class AIConfig {
 
     @Value("${ai.model.language.quantize:true}")
     private boolean quantizeLanguageModel;
+    
+    @Value("${ai.model.language.quantization-level:FP16}")
+    private String quantizationLevel;
 
     @Value("${ai.model.embeddings.name:all-MiniLM-L6-v2}")
     private String embeddingsModelName;
@@ -100,6 +103,10 @@ public class AIConfig {
 
     public boolean isQuantizeLanguageModel() {
         return quantizeLanguageModel;
+    }
+    
+    public String getQuantizationLevel() {
+        return quantizationLevel;
     }
 
     public String getEmbeddingsModelName() {

@@ -77,7 +77,7 @@ public class CrawlerController {
             try {
                 status.setStatus("running");
 
-                List<Page> pages = crawlerService.crawlApplication(request.getBaseUrl(), maxPages);
+                List<Page> pages = crawlerService.crawlApplication(request.getBaseUrl(), maxPages, crawlId);
 
                 // Update status
                 status.setStatus("completed");
@@ -155,11 +155,30 @@ public class CrawlerController {
         // Set status to stopping
         status.setStatus("stopping");
 
-        // TODO: Implement actual crawl stopping in the CrawlerService
-
-        return ResponseEntity.accepted().body(
-                new CrawlResponse("stopping", "Crawl is being stopped", crawlId, status)
-        );
+        // Call crawler service to stop the crawl
+        boolean stopped = crawlerService.stopCrawl(crawlId);
+        
+        if (stopped) {
+            logger.info("Successfully stopped crawl: {}", crawlId);
+            
+            // Update status information
+            status.setStatus("stopped");
+            status.setCompleted(true);
+            status.setEndTime(System.currentTimeMillis());
+            status.setDurationMs(status.getEndTime() - status.getStartTime());
+            
+            return ResponseEntity.ok(
+                    new CrawlResponse("stopped", "Crawl has been stopped", crawlId, status)
+            );
+        } else {
+            // Could not stop the crawl for some reason
+            logger.warn("Failed to stop crawl: {}", crawlId);
+            status.setStatus("running");
+            
+            return ResponseEntity.accepted().body(
+                    new CrawlResponse("running", "Failed to stop crawl, it's still running", crawlId, status)
+            );
+        }
     }
 
     /**
@@ -173,13 +192,15 @@ public class CrawlerController {
             return ResponseEntity.notFound().build();
         }
 
+        // Retrieve current results - works for both completed and in-progress crawls
+        List<Page> results = crawlerService.getCurrentResults();
+        
+        // If crawl is still in progress, return 202 Accepted status
         if (!status.isCompleted()) {
-            return ResponseEntity.accepted().build();
+            return ResponseEntity.accepted().body(results);
         }
 
-        // TODO: Implement retrieving actual crawl results
-        // For now, return an empty list
-        return ResponseEntity.ok(List.of());
+        return ResponseEntity.ok(results);
     }
 
     /**

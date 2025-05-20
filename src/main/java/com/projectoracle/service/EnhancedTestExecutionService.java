@@ -5,6 +5,7 @@ import com.projectoracle.model.TestCase.TestExecutionResult;
 import com.projectoracle.repository.TestCaseRepository;
 import com.projectoracle.config.AIConfig;
 
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,66 +62,132 @@ public class EnhancedTestExecutionService {
     private String outputDir;
 
     /**
+     * Map of current test executions (testId -> thread)
+     * Using this to allow test cancellation if needed
+     */
+    private final Map<UUID, Thread> activeExecutions = new ConcurrentHashMap<>();
+    
+    /**
      * Execute a test case.
      *
      * @param testCaseId the ID of the test case to execute
      * @return a CompletableFuture that will complete when the test execution is done
+     * @throws IllegalArgumentException if the test case doesn't exist or is invalid
      */
     public CompletableFuture<TestCase> executeTest(UUID testCaseId) {
+        if (testCaseId == null) {
+            throw new IllegalArgumentException("Test case ID cannot be null");
+        }
+        
+        // Capture current thread for tracking
+        final Thread[] executionThread = new Thread[1];
+        
         return CompletableFuture.supplyAsync(() -> {
-            TestCase testCase = testCaseRepository.findById(testCaseId);
-            if (testCase == null) {
-                throw new IllegalArgumentException("Test case not found: " + testCaseId);
-            }
-
-            logger.info("Executing test case: {}", testCase.getId());
-            testCase.setStatus(TestCase.TestStatus.EXECUTING);
-            testCaseRepository.save(testCase);
-
+            // Store current thread for potential cancellation
+            executionThread[0] = Thread.currentThread();
+            activeExecutions.put(testCaseId, executionThread[0]);
+            
             try {
-                // Save the test code to a file
-                String packagePath = testCase.getPackageName().replace('.', '/');
-                Path sourcePath = Paths.get(outputDir, "generated-tests", packagePath);
-                Path sourceFile = sourcePath.resolve(testCase.getClassName() + ".java");
-
-                Files.createDirectories(sourcePath);
-                Files.writeString(sourceFile, testCase.getSourceCode());
-
-                // Compile the test
-                boolean compiled = compileTest(sourceFile);
-                if (!compiled) {
-                    throw new RuntimeException("Failed to compile test: " + sourceFile);
+                TestCase testCase = testCaseRepository.findById(testCaseId);
+                if (testCase == null) {
+                    throw new IllegalArgumentException("Test case not found: " + testCaseId);
                 }
 
-                // Run the test
-                TestExecutionResult result = runTest(testCase.getPackageName() + "." + testCase.getClassName());
+                // Validation
+                if (testCase.getSourceCode() == null || testCase.getSourceCode().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Test case has no source code: " + testCaseId);
+                }
+                
+                if (testCase.getPackageName() == null || testCase.getClassName() == null) {
+                    throw new IllegalArgumentException("Test case missing package or class name: " + testCaseId);
+                }
 
-                // Update test case with results
-                testCase.setLastExecutionResult(result);
-                testCase.setLastExecutedAt(LocalDateTime.now());
-                testCase.setStatus(result.isSuccess() ? TestCase.TestStatus.PASSED : TestCase.TestStatus.FAILED);
-
-                // Save the test case with results
+                logger.info("Executing test case: {}", testCase.getId());
+                testCase.setStatus(TestCase.TestStatus.EXECUTING);
                 testCaseRepository.save(testCase);
 
-                logger.info("Test execution completed for: {}, success: {}",
-                        testCase.getId(), result.isSuccess());
+                try {
+                    // Create a unique directory for this test execution to avoid conflicts
+                    String executionId = UUID.randomUUID().toString().substring(0, 8);
+                    String packagePath = testCase.getPackageName().replace('.', '/');
+                    Path sourcePath = Paths.get(outputDir, "generated-tests", "execution-" + executionId, packagePath);
+                    Path sourceFile = sourcePath.resolve(testCase.getClassName() + ".java");
 
-                return testCase;
-            } catch (Exception e) {
-                logger.error("Error executing test case: {}", testCase.getId(), e);
-                testCase.setStatus(TestCase.TestStatus.FAILED);
-                TestCase.TestExecutionResult result = TestCase.TestExecutionResult.builder()
+                    Files.createDirectories(sourcePath);
+                    Files.writeString(sourceFile, testCase.getSourceCode());
+                    logger.debug("Wrote test source to {}", sourceFile);
+
+                    // Compile the test
+                    boolean compiled = compileTest(sourceFile);
+                    if (!compiled) {
+                        throw new RuntimeException("Failed to compile test: " + sourceFile);
+                    }
+
+                    // Check if execution was cancelled
+                    if (Thread.currentThread().isInterrupted()) {
+                        throw new InterruptedException("Test execution was cancelled");
+                    }
+
+                    // Run the test
+                    TestExecutionResult result = runTest(testCase.getPackageName() + "." + testCase.getClassName());
+
+                    // Update test case with results
+                    testCase.setLastExecutionResult(result);
+                    testCase.setLastExecutedAt(LocalDateTime.now());
+                    testCase.setStatus(result.isSuccess() ? TestCase.TestStatus.PASSED : TestCase.TestStatus.FAILED);
+
+                    // Save the test case with results
+                    testCaseRepository.save(testCase);
+
+                    logger.info("Test execution completed for: {}, success: {}",
+                            testCase.getId(), result.isSuccess());
+
+                    return testCase;
+                } catch (InterruptedException e) {
+                    logger.warn("Test execution cancelled: {}", testCaseId);
+                    testCase.setStatus(TestCase.TestStatus.FAILED);
+                    TestCase.TestExecutionResult result = TestCase.TestExecutionResult.builder()
+                                                                                  .success(false)
+                                                                                  .errorMessage("Execution cancelled")
+                                                                                  .executedAt(LocalDateTime.now())
+                                                                                  .build();
+                    testCase.setLastExecutionResult(result);
+                    testCaseRepository.save(testCase);
+                    return testCase;
+                } catch (Exception e) {
+                    logger.error("Error executing test case: {}", testCase.getId(), e);
+                    testCase.setStatus(TestCase.TestStatus.FAILED);
+                    TestCase.TestExecutionResult result = TestCase.TestExecutionResult.builder()
                                                                                   .success(false)
                                                                                   .errorMessage("Execution error: " + e.getMessage())
                                                                                   .stackTrace(getStackTraceAsString(e))
                                                                                   .executedAt(LocalDateTime.now())
                                                                                   .build();
-                testCase.setLastExecutionResult(result);
-                testCaseRepository.save(testCase);
-                return testCase;
-            }
+                    testCase.setLastExecutionResult(result);
+                    testCaseRepository.save(testCase);
+                    return testCase;
+                }
+            } finally {
+                // Clean up the thread reference
+                activeExecutions.remove(testCaseId);
+            }    
         }, backgroundExecutor);
+    }
+    
+    /**
+     * Cancel a running test execution
+     * 
+     * @param testCaseId the ID of the test to cancel
+     * @return true if the test was running and cancellation was requested
+     */
+    public boolean cancelTestExecution(UUID testCaseId) {
+        Thread executionThread = activeExecutions.get(testCaseId);
+        if (executionThread != null) {
+            logger.info("Cancelling test execution for: {}", testCaseId);
+            executionThread.interrupt();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -128,18 +195,65 @@ public class EnhancedTestExecutionService {
      *
      * @param status the status of test cases to execute
      * @return a CompletableFuture that will complete when all tests are executed
+     * @throws IllegalArgumentException if status is null
      */
     public CompletableFuture<List<TestCase>> executeAllWithStatus(TestCase.TestStatus status) {
+        if (status == null) {
+            throw new IllegalArgumentException("Status cannot be null");
+        }
+        
         List<TestCase> testCases = testCaseRepository.findByStatus(status);
 
         logger.info("Executing {} test cases with status: {}", testCases.size(), status);
+        
+        if (testCases.isEmpty()) {
+            // Return immediately if there are no test cases
+            return CompletableFuture.completedFuture(Collections.emptyList());
+        }
 
-        List<CompletableFuture<TestCase>> futures = testCases.stream()
-                                                             .map(testCase -> executeTest(testCase.getId()))
-                                                             .collect(Collectors.toList());
-
-        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                                .thenApply(v -> testCases);
+        // Create a batch execution ID for tracking this group of tests
+        final String batchId = "batch-" + UUID.randomUUID().toString().substring(0, 8);
+        logger.info("Created batch execution {} for {} tests", batchId, testCases.size());
+        
+        try {
+            // Execute tests with proper error handling for each test
+            List<CompletableFuture<TestCase>> futures = testCases.stream()
+                    .map(testCase -> {
+                        try {
+                            return executeTest(testCase.getId());
+                        } catch (Exception e) {
+                            logger.error("Failed to schedule test execution for test {}: {}", 
+                                    testCase.getId(), e.getMessage(), e);
+                            // Create a pre-completed future with the failure
+                            return CompletableFuture.completedFuture(testCase);
+                        }
+                    })
+                    .collect(Collectors.toList());
+            
+            // Wait for all tests to complete and return the results
+            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                    .thenApply(v -> futures.stream()
+                            .map(CompletableFuture::join) // Safe because all futures are completed
+                            .collect(Collectors.toList())
+                    ).exceptionally(ex -> {
+                        logger.error("Batch execution {} failed: {}", batchId, ex.getMessage(), ex);
+                        // Return as many results as we can
+                        return futures.stream()
+                                .filter(CompletableFuture::isDone)
+                                .map(f -> {
+                                    try {
+                                        return f.join();
+                                    } catch (Exception e) {
+                                        return null;
+                                    }
+                                })
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toList());
+                    });
+        } catch (Exception e) {
+            logger.error("Failed to execute batch {}: {}", batchId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
