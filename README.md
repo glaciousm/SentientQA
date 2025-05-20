@@ -42,7 +42,10 @@ Visit `http://localhost:8080` to access the built-in UI. You'll be prompted to l
   Click to AI-generate JUnit 5 tests for analyzed methods.
 
 - **Knowledge Integration**  
-  Select external knowledge sources to enhance test generation with API docs, project documentation, and historical test patterns.
+  Select external knowledge sources to enhance test generation with API docs, project documentation, historical test patterns, Jira issues, and Confluence pages.
+  
+- **Natural Language Queries**  
+  Generate tests using plain English descriptions like "Test the login method with invalid credentials".
 
 - **Execute Tests**  
   Run individual or all generated tests; view pass/fail and exception details.
@@ -95,6 +98,29 @@ curl -X POST http://localhost:8080/api/v1/knowledge/integrate \
     ]
   }'
 
+# Jira/Confluence integration for test generation (secured)
+curl -X POST http://localhost:8080/api/v1/knowledge/integrate/jira \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "baseUrl": "https://your-company.atlassian.net",
+    "username": "your-email@company.com",
+    "apiToken": "your-api-token",
+    "authType": "BASIC_AUTH"
+  }' \
+  --data-urlencode "methodSignature=calculateTotal(int, double)" \
+  --data-urlencode "projectKey=PROJ"
+
+# Generate tests using natural language (secured)
+curl -X POST http://localhost:8080/api/v1/nlp/generate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "query": "Test the login method with invalid credentials",
+    "targetClass": "UserAuthenticationService",
+    "useAllAvailableKnowledge": true
+  }'
+
 # Get actuator health (admin only)
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/management/health
 ```
@@ -106,6 +132,8 @@ Refer to the source Javadoc or log output for full request/response models.
 - **Code Analysis** (`CodeAnalysisService`): Parses Java AST via JavaParser into `MethodInfo`.
 - **Test Generation** (`TestGenerationService` + `AIModelService`): Uses a local GPT-2 model via DJL to generate JUnit 5 source code.
 - **Knowledge Integration** (`KnowledgeIntegrationService`): Integrates external knowledge sources (API docs, project docs, code comments, test history) to improve test generation.
+- **Atlassian Integration** (`JiraService` + `ConfluenceService`): Extracts test requirements, specs, and documentation from Jira/Confluence.
+- **Natural Language Processing** (`NLPQueryService`): Allows test generation from natural language descriptions.
 - **UI Crawling** (`UICrawlerService`): Headless Selenium crawler that discovers pages and UI components for end-to-end tests.
 - **API Analysis** (`APITestGenerationService`): Discovers endpoints and generates API tests.
 - **Test Repository** (`TestCaseRepository`): Persists test cases in memory and on disk (JSON).

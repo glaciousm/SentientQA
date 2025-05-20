@@ -46,10 +46,10 @@ To manage implementation efficiently (given token constraints), tasks are groupe
   1. Write unit tests for core services (Completed, High)
   2. Integrate static analysis tools (SpotBugs, Checkstyle) (Completed, Low)
 
-- **Stage 5 (Mid-Term):** ✅ PARTIALLY COMPLETED
+- **Stage 5 (Mid-Term):** ✅ COMPLETED
   1. Knowledge Integration System (API docs, project docs, code comments, test history) (Completed, High)
-  2. Jira/Confluence ingestion for knowledge integration (Planned, Medium)
-  3. NLP query interface for tests (Planned, Medium)
+  2. Jira/Confluence ingestion for knowledge integration (Completed, Medium)
+  3. NLP query interface for tests (Completed, Medium)
 
 - **Stage 6 (Mid-Term):**
   1. Expand self-healing features (Planned, High)
@@ -91,6 +91,8 @@ To manage implementation efficiently (given token constraints), tasks are groupe
 | 12. ✅ Write unit tests for core services                                             | Completed  | High     | Prevent regressions in critical modules.       |
 | 13. ✅ Integrate static analysis tools (SpotBugs, Checkstyle)                         | Completed  | Low      | Enforce code quality and style.                |
 | 14. ✅ Implement Knowledge Integration System for test enhancement                    | Completed  | High     | Integrate external knowledge with test gen.    |
+| 15. ✅ Add Jira/Confluence integration for test enhancement                               | Completed  | Medium   | Extract test requirements from Atlassian.      |
+| 16. ✅ Implement NLP interface for test generation                                        | Completed  | Medium   | Generate tests from natural language queries.  |
 
 ---
 
@@ -99,8 +101,8 @@ To manage implementation efficiently (given token constraints), tasks are groupe
 | Task                                                                                         | Status    | Priority | Notes                                              |
 |----------------------------------------------------------------------------------------------|-----------|----------|----------------------------------------------------|
 | 1. Knowledge Integration System (API docs, project docs, code comments, test history)        | Completed | High     | External knowledge enrichment for test generation. |
-| 2. Jira/Confluence ingestion for knowledge integration                                       | Planned   | Medium   | Link tests to requirements for traceability.       |
-| 3. NLP query interface for tests (e.g., "Generate tests for invalid login")                  | Planned   | Medium   | Natural language to test generation.               |
+| 2. Jira/Confluence ingestion for knowledge integration                                       | Completed | Medium   | Link tests to requirements for traceability.       |
+| 3. NLP query interface for tests (e.g., "Generate tests for invalid login")                  | Completed | Medium   | Natural language to test generation.               |
 | 4. Expand self-healing (AI-driven fixes & re-test)                                           | Planned   | High     | Automate test repair and validation.               |
 | 5. Implement test prioritization (historical data & coverage heuristics)                     | Planned   | Medium   | Run high-risk tests first in CI pipelines.         |
 | 6. Quality Intelligence Dashboard (failure trends, flakiness metrics)                        | Planned   | Medium   | Provide analytics and insights.                    |
