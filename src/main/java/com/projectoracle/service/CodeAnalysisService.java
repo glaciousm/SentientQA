@@ -101,6 +101,49 @@ public class CodeAnalysisService {
             return List.of();
         }
     }
+    
+    /**
+     * Find a method by its signature
+     *
+     * @param methodSignature The signature of the method to find (e.g., "calculateTotal(int, int)")
+     * @return MethodInfo for the requested method, or null if not found
+     */
+    public MethodInfo findMethodBySignature(String methodSignature) {
+        logger.info("Looking for method with signature: {}", methodSignature);
+        
+        // Extract method name from signature
+        String methodName = methodSignature;
+        if (methodSignature.contains("(")) {
+            methodName = methodSignature.substring(0, methodSignature.indexOf('('));
+        }
+        
+        // Search in all Java files in the current directory
+        try (Stream<Path> paths = Files.walk(Path.of("."), 10)) {
+            List<Path> javaFiles = paths
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .collect(Collectors.toList());
+            
+            for (Path file : javaFiles) {
+                Map<String, MethodInfo> methodInfos = analyzeJavaFile(file);
+                
+                // Look for exact signature match first
+                for (MethodInfo methodInfo : methodInfos.values()) {
+                    if (methodInfo.getSignature().equals(methodSignature) ||
+                        methodInfo.getMethodName().equals(methodName)) {
+                        logger.info("Found method {} in {}", methodSignature, file);
+                        return methodInfo;
+                    }
+                }
+            }
+            
+            logger.warn("Method with signature {} not found", methodSignature);
+            return null;
+        } catch (IOException e) {
+            logger.error("Error searching for method: {}", methodSignature, e);
+            return null;
+        }
+    }
 
     /**
      * Visitor class that extracts method information from Java AST

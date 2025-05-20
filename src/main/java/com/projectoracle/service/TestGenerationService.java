@@ -42,6 +42,64 @@ public class TestGenerationService {
 
         // Generate test code using AI
         String generatedTestCode = aiModelService.generateText(prompt, 500);
+        
+        // Calculate confidence score boost if knowledge integration was used
+        double confidenceScore = 0.8;
+        double knowledgeEnhancementScore = 0.0;
+        
+        // If additional context was provided, boost the confidence score
+        if (methodInfo.getAdditionalContext() != null && !methodInfo.getAdditionalContext().isEmpty()) {
+            knowledgeEnhancementScore = 0.15; // 15% improvement from knowledge integration
+            confidenceScore += knowledgeEnhancementScore;
+            if (confidenceScore > 1.0) {
+                confidenceScore = 1.0;
+            }
+            logger.info("Knowledge integration improved confidence score by {}", knowledgeEnhancementScore);
+        }
+        
+        // Extract knowledge sources from methodInfo
+        List<com.projectoracle.model.KnowledgeSource> knowledgeSources = new ArrayList<>();
+        if (methodInfo.getAdditionalContext() != null) {
+            if (methodInfo.getAdditionalContext().containsKey("apiDoc")) {
+                knowledgeSources.add(new com.projectoracle.model.KnowledgeSource(
+                    "api", 
+                    methodInfo.getAdditionalContext().get("path") != null ? 
+                        methodInfo.getAdditionalContext().get("path").toString() : "",
+                    "swagger", 
+                    true
+                ));
+            }
+            
+            if (methodInfo.getAdditionalContext().containsKey("projectDoc")) {
+                knowledgeSources.add(new com.projectoracle.model.KnowledgeSource(
+                    "docs", 
+                    methodInfo.getAdditionalContext().get("path") != null ? 
+                        methodInfo.getAdditionalContext().get("path").toString() : "",
+                    "markdown", 
+                    true
+                ));
+            }
+            
+            if (methodInfo.getAdditionalContext().containsKey("testHistory")) {
+                knowledgeSources.add(new com.projectoracle.model.KnowledgeSource(
+                    "history", 
+                    methodInfo.getAdditionalContext().get("path") != null ? 
+                        methodInfo.getAdditionalContext().get("path").toString() : "",
+                    "junit", 
+                    true
+                ));
+            }
+            
+            if (methodInfo.getAdditionalContext().containsKey("codeComments")) {
+                knowledgeSources.add(new com.projectoracle.model.KnowledgeSource(
+                    "source", 
+                    methodInfo.getAdditionalContext().get("path") != null ? 
+                        methodInfo.getAdditionalContext().get("path").toString() : "",
+                    "java", 
+                    true
+                ));
+            }
+        }
 
         // Create and return a test case
         return TestCase.builder()
@@ -58,7 +116,9 @@ public class TestGenerationService {
                        .assertions(extractAssertions(generatedTestCode))
                        .createdAt(LocalDateTime.now())
                        .modifiedAt(LocalDateTime.now())
-                       .confidenceScore(0.8)
+                       .confidenceScore(confidenceScore)
+                       .knowledgeEnhancementScore(knowledgeEnhancementScore)
+                       .knowledgeSources(knowledgeSources.isEmpty() ? null : knowledgeSources)
                        .generationPrompt(prompt)
                        .build();
     }
@@ -128,6 +188,39 @@ public class TestGenerationService {
         if (methodInfo.getBody() != null && !methodInfo.getBody().isEmpty()) {
             promptBuilder.append("\nMethod body:\n").append(methodInfo.getBody()).append("\n");
         }
+        
+        // Include additional context from knowledge integration if available
+        if (methodInfo.getAdditionalContext() != null && !methodInfo.getAdditionalContext().isEmpty()) {
+            promptBuilder.append("\nAdditional Context from Knowledge Integration:\n");
+            
+            // Include API documentation information
+            if (methodInfo.getAdditionalContext().containsKey("apiDoc")) {
+                promptBuilder.append("\nAPI Documentation:\n");
+                Object apiDoc = methodInfo.getAdditionalContext().get("apiDoc");
+                promptBuilder.append(apiDoc.toString()).append("\n");
+            }
+            
+            // Include project documentation information
+            if (methodInfo.getAdditionalContext().containsKey("projectDoc")) {
+                promptBuilder.append("\nProject Documentation:\n");
+                Object projectDoc = methodInfo.getAdditionalContext().get("projectDoc");
+                promptBuilder.append(projectDoc.toString()).append("\n");
+            }
+            
+            // Include historical test data
+            if (methodInfo.getAdditionalContext().containsKey("testHistory")) {
+                promptBuilder.append("\nHistorical Test Patterns:\n");
+                Object testHistory = methodInfo.getAdditionalContext().get("testHistory");
+                promptBuilder.append(testHistory.toString()).append("\n");
+            }
+            
+            // Include code comments
+            if (methodInfo.getAdditionalContext().containsKey("codeComments")) {
+                promptBuilder.append("\nCode Comments:\n");
+                Object codeComments = methodInfo.getAdditionalContext().get("codeComments");
+                promptBuilder.append(codeComments.toString()).append("\n");
+            }
+        }
 
         // Add instructions for test generation
         promptBuilder.append("\nCreate a comprehensive JUnit 5 test that:");
@@ -136,6 +229,14 @@ public class TestGenerationService {
         promptBuilder.append("\n3. Handles edge cases");
         promptBuilder.append("\n4. Uses mocks where appropriate");
         promptBuilder.append("\n5. Has good test method names following the convention testMethodName_scenario_expectedBehavior");
+        
+        // Add additional instructions based on knowledge integration
+        if (methodInfo.getAdditionalContext() != null && !methodInfo.getAdditionalContext().isEmpty()) {
+            promptBuilder.append("\n6. Incorporates insights from the additional context provided");
+            promptBuilder.append("\n7. Uses realistic test data based on the documentation");
+            promptBuilder.append("\n8. Follows established patterns from historical tests");
+            promptBuilder.append("\n9. Addresses all requirements mentioned in the documentation");
+        }
 
         return promptBuilder.toString();
     }

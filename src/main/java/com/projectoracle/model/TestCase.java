@@ -38,6 +38,10 @@ public class TestCase {
     private Double confidenceScore;
     private String generationPrompt;
     private TestExecutionResult lastExecutionResult;
+    
+    // Knowledge integration fields
+    private List<KnowledgeSource> knowledgeSources;
+    private Double knowledgeEnhancementScore; // How much the test was improved by knowledge integration
 
     /**
      * The type of test case
@@ -97,6 +101,7 @@ public class TestCase {
                 .lastExecutedAt(this.lastExecutedAt)
                 .confidenceScore(this.confidenceScore)
                 .generationPrompt(this.generationPrompt)
+                .knowledgeEnhancementScore(this.knowledgeEnhancementScore)
                 .build();
         
         // Copy lists (if they exist)
@@ -106,6 +111,11 @@ public class TestCase {
         
         if (this.dependencies != null) {
             copy.setDependencies(new ArrayList<>(this.dependencies));
+        }
+        
+        // Copy knowledge sources (if they exist)
+        if (this.knowledgeSources != null) {
+            copy.setKnowledgeSources(new ArrayList<>(this.knowledgeSources));
         }
         
         // Copy execution result (if it exists)

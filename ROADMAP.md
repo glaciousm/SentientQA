@@ -19,6 +19,7 @@ These core functionalities have been fully implemented and validated:
 | **UI Crawler** (UICrawlerService using Selenium WebDriver)                                        | Completed  | -        | Discovers pages and UI components.             |
 | **API Analysis & Test Generation** (APITestGenerationService & API endpoints)                     | Completed  | -        | Discovers endpoints and generates API tests.   |
 | **Self-Healing Prototype** (TestHealingService basic AI-driven fixes)                              | Completed  | -        | Prototype for adjusting failing tests.         |
+| **Knowledge Integration System** (KnowledgeIntegrationService for API docs, code comments, etc.)   | Completed  | -        | Integrates external knowledge with test gen.   |
 
 ---
 
@@ -45,9 +46,10 @@ To manage implementation efficiently (given token constraints), tasks are groupe
   1. Write unit tests for core services (Completed, High)
   2. Integrate static analysis tools (SpotBugs, Checkstyle) (Completed, Low)
 
-- **Stage 5 (Mid-Term):**
-  1. Knowledge Integration System (Jira/Confluence ingestion) (Planned, High)
-  2. NLP query interface for tests (Planned, Medium)
+- **Stage 5 (Mid-Term):** ✅ PARTIALLY COMPLETED
+  1. Knowledge Integration System (API docs, project docs, code comments, test history) (Completed, High)
+  2. Jira/Confluence ingestion for knowledge integration (Planned, Medium)
+  3. NLP query interface for tests (Planned, Medium)
 
 - **Stage 6 (Mid-Term):**
   1. Expand self-healing features (Planned, High)
@@ -88,6 +90,7 @@ To manage implementation efficiently (given token constraints), tasks are groupe
 | 11. ✅ Enhance UI responsiveness (lazy-load lists, loading indicators)                | Completed  | Low      | Improve dashboard UX.                          |
 | 12. ✅ Write unit tests for core services                                             | Completed  | High     | Prevent regressions in critical modules.       |
 | 13. ✅ Integrate static analysis tools (SpotBugs, Checkstyle)                         | Completed  | Low      | Enforce code quality and style.                |
+| 14. ✅ Implement Knowledge Integration System for test enhancement                    | Completed  | High     | Integrate external knowledge with test gen.    |
 
 ---
 
@@ -95,18 +98,19 @@ To manage implementation efficiently (given token constraints), tasks are groupe
 
 | Task                                                                                         | Status    | Priority | Notes                                              |
 |----------------------------------------------------------------------------------------------|-----------|----------|----------------------------------------------------|
-| 1. Knowledge Integration System (Jira/Confluence ingestion)                                  | Planned   | High     | Link tests to requirements for traceability.       |
-| 2. NLP query interface for tests (e.g., “Generate tests for invalid login”)                  | Planned   | Medium   | Natural language to test generation.               |
-| 3. Expand self-healing (AI-driven fixes & re-test)                                           | Planned   | High     | Automate test repair and validation.               |
-| 4. Implement test prioritization (historical data & coverage heuristics)                     | Planned   | Medium   | Run high-risk tests first in CI pipelines.         |
-| 5. Quality Intelligence Dashboard (failure trends, flakiness metrics)                        | Planned   | Medium   | Provide analytics and insights.                    |
-| 6. Support performance & security test generation                                            | Planned   | Low      | Generate JMH benchmarks and security tests.        |
-| 7. CI/CD integration (Docker, Jenkins, GitHub Actions plugins)                               | Planned   | High     | Seamless enterprise pipeline compatibility.        |
-| 8. Issue tracker automation (auto-create Jira tickets for failures)                          | Planned   | Medium   | Close the feedback loop with development workflow. |
-| 9. Plugin architecture for custom generators & models                                        | Planned   | Low      | Enable extensibility for domain-specific needs.    |
-| 10. Cross-language support (e.g., Python)                                                    | Planned   | Low      | Broaden platform beyond Java.                      |
-| 11. Scalability improvements (distributed storage & execution)                               | Planned   | Medium   | Handle enterprise-scale projects.                  |
-| 12. Model upgrades & fine-tuning on user code                                                | Planned   | Medium   | Improve test quality with advanced AI models.      |
+| 1. Knowledge Integration System (API docs, project docs, code comments, test history)        | Completed | High     | External knowledge enrichment for test generation. |
+| 2. Jira/Confluence ingestion for knowledge integration                                       | Planned   | Medium   | Link tests to requirements for traceability.       |
+| 3. NLP query interface for tests (e.g., "Generate tests for invalid login")                  | Planned   | Medium   | Natural language to test generation.               |
+| 4. Expand self-healing (AI-driven fixes & re-test)                                           | Planned   | High     | Automate test repair and validation.               |
+| 5. Implement test prioritization (historical data & coverage heuristics)                     | Planned   | Medium   | Run high-risk tests first in CI pipelines.         |
+| 6. Quality Intelligence Dashboard (failure trends, flakiness metrics)                        | Planned   | Medium   | Provide analytics and insights.                    |
+| 7. Support performance & security test generation                                            | Planned   | Low      | Generate JMH benchmarks and security tests.        |
+| 8. CI/CD integration (Docker, Jenkins, GitHub Actions plugins)                               | Planned   | High     | Seamless enterprise pipeline compatibility.        |
+| 9. Issue tracker automation (auto-create Jira tickets for failures)                          | Planned   | Medium   | Close the feedback loop with development workflow. |
+| 10. Plugin architecture for custom generators & models                                       | Planned   | Low      | Enable extensibility for domain-specific needs.    |
+| 11. Cross-language support (e.g., Python)                                                    | Planned   | Low      | Broaden platform beyond Java.                      |
+| 12. Scalability improvements (distributed storage & execution)                               | Planned   | Medium   | Handle enterprise-scale projects.                  |
+| 13. Model upgrades & fine-tuning on user code                                                | Planned   | Medium   | Improve test quality with advanced AI models.      |
 
 ---
 

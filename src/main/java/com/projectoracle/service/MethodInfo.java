@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +30,9 @@ public class MethodInfo {
     private boolean isPublic;
     private boolean isStatic;
     private String body;
+    
+    // Additional context from knowledge integration
+    private Map<String, Object> additionalContext = new HashMap<>();
 
     /**
      * Get the fully qualified name of the method

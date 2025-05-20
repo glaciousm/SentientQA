@@ -41,6 +41,9 @@ Visit `http://localhost:8080` to access the built-in UI. You'll be prompted to l
 - **Generate Tests**  
   Click to AI-generate JUnit 5 tests for analyzed methods.
 
+- **Knowledge Integration**  
+  Select external knowledge sources to enhance test generation with API docs, project documentation, and historical test patterns.
+
 - **Execute Tests**  
   Run individual or all generated tests; view pass/fail and exception details.
 
@@ -80,6 +83,18 @@ curl -X POST "http://localhost:8080/api/v1/enhanced-tests/123/execute?waitForRes
 # List reports (secured)
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/reports/list
 
+# Knowledge integration for test generation (secured)
+curl -X POST http://localhost:8080/api/v1/knowledge/integrate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "methodSignature": "calculateTotal(int, double)",
+    "knowledgeSources": [
+      {"type": "api", "path": "docs/api-specs/orders.json", "format": "swagger", "enabled": true},
+      {"type": "docs", "path": "docs/project/requirements.md", "format": "markdown", "enabled": true}
+    ]
+  }'
+
 # Get actuator health (admin only)
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/management/health
 ```
@@ -90,6 +105,7 @@ Refer to the source Javadoc or log output for full request/response models.
 
 - **Code Analysis** (`CodeAnalysisService`): Parses Java AST via JavaParser into `MethodInfo`.
 - **Test Generation** (`TestGenerationService` + `AIModelService`): Uses a local GPT-2 model via DJL to generate JUnit 5 source code.
+- **Knowledge Integration** (`KnowledgeIntegrationService`): Integrates external knowledge sources (API docs, project docs, code comments, test history) to improve test generation.
 - **UI Crawling** (`UICrawlerService`): Headless Selenium crawler that discovers pages and UI components for end-to-end tests.
 - **API Analysis** (`APITestGenerationService`): Discovers endpoints and generates API tests.
 - **Test Repository** (`TestCaseRepository`): Persists test cases in memory and on disk (JSON).
