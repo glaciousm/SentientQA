@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Oracle - Test Management</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/test-management.css">
+</head>
+<body>
+  <!-- Full-page loading overlay -->
+  <div id="pageLoadingOverlay" class="loading-overlay">
+    <div class="loading-spinner-container">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="loading-message">Loading Test Management...</p>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="index.html">
+        <i class="bi bi-radar"></i> Project Oracle
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="index.html">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard.html">Quality Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="test-management.html">Test Management</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="security-tests.html">Security Testing</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="performance-tests.html">Performance Testing</a>
+          </li>
+        </ul>
+        <div class="d-flex">
+          <button id="modelStatusBtn" class="btn btn-outline-secondary" onclick="toggleModelStatus()">
+            <i class="bi bi-hdd"></i> Model Status
+          </button>
+          <button class="btn btn-outline-primary ms-2">
+            <i class="bi bi-person-circle"></i> Admin
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <h1 class="mb-0">Test Management</h1>
+        <p class="text-muted">Manage, heal, and prioritize your test suite</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <div class="btn-group" role="group">
+          <button id="refreshBtn" class="btn btn-primary">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+          </button>
+          <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#configModal">
+            <i class="bi bi-gear"></i> Configure
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-4" id="testManagementTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="test-library-tab" data-bs-toggle="tab" data-bs-target="#test-library" type="button" role="tab" aria-controls="test-library" aria-selected="true">
+          <i class="bi bi-collection"></i> Test Library
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="test-healing-tab" data-bs-toggle="tab" data-bs-target="#test-healing" type="button" role="tab" aria-controls="test-healing" aria-selected="false">
+          <i class="bi bi-heart-pulse"></i> Test Healing
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="test-prioritization-tab" data-bs-toggle="tab" data-bs-target="#test-prioritization" type="button" role="tab" aria-controls="test-prioritization" aria-selected="false">
+          <i class="bi bi-sort-numeric-down"></i> Test Prioritization
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="test-execution-tab" data-bs-toggle="tab" data-bs-target="#test-execution" type="button" role="tab" aria-controls="test-execution" aria-selected="false">
+          <i class="bi bi-play-circle"></i> Test Execution
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="testManagementTabContent">
+      <!-- Test Library Tab -->
+      <div class="tab-pane fade show active" id="test-library" role="tabpanel" aria-labelledby="test-library-tab">
+        <div class="row">
+          <div class="col-lg-3 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Test Filters</h5>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label">Search Tests</label>
+                  <div class="input-group">
+                    <input type="text" class="form-control" id="testSearchInput" placeholder="Search by name, class...">
+                    <button class="btn btn-outline-secondary" type="button" id="testSearchBtn">
+                      <i class="bi bi-search"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Status</label>
+                  <div class="form-check">
+                    <input class="form-check-input status-filter" type="checkbox" value="PASSED" id="statusPassed" checked>
+                    <label class="form-check-label" for="statusPassed">
+                      Passed
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input status-filter" type="checkbox" value="FAILED" id="statusFailed" checked>
+                    <label class="form-check-label" for="statusFailed">
+                      Failed
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input status-filter" type="checkbox" value="BROKEN" id="statusBroken" checked>
+                    <label class="form-check-label" for="statusBroken">
+                      Broken
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input status-filter" type="checkbox" value="HEALED" id="statusHealed" checked>
+                    <label class="form-check-label" for="statusHealed">
+                      Healed
+                    </label>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Type</label>
+                  <div class="form-check">
+                    <input class="form-check-input type-filter" type="checkbox" value="Unit" id="typeUnit" checked>
+                    <label class="form-check-label" for="typeUnit">
+                      Unit
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input type-filter" type="checkbox" value="Integration" id="typeIntegration" checked>
+                    <label class="form-check-label" for="typeIntegration">
+                      Integration
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input type-filter" type="checkbox" value="API" id="typeAPI" checked>
+                    <label class="form-check-label" for="typeAPI">
+                      API
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input type-filter" type="checkbox" value="UI" id="typeUI" checked>
+                    <label class="form-check-label" for="typeUI">
+                      UI
+                    </label>
+                  </div>
+                </div>
+
+                <button class="btn btn-outline-primary w-100" id="resetFiltersBtn">Reset Filters</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-9 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Test Cases</h5>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-secondary" id="exportTestsBtn">
+                    <i class="bi bi-download"></i> Export
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary" id="generateTestBtn">
+                    <i class="bi bi-plus"></i> Generate Test
+                  </button>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div id="testLibrarySkeleton" class="p-3">
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px;"></div>
+                </div>
+                <div id="testLibraryContent" style="display: none;">
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="testLibraryTable">
+                      <thead>
+                        <tr>
+                          <th scope="col" class="sortable" data-sort="name">Name <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                          <th scope="col" class="sortable" data-sort="class">Class <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                          <th scope="col" class="sortable" data-sort="type">Type <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                          <th scope="col" class="sortable" data-sort="status">Status <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                          <th scope="col" class="sortable" data-sort="modified">Last Modified <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                          <th scope="col">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="testLibraryTableBody">
+                        <!-- Will be populated by JavaScript -->
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center p-3">
+                    <div id="testCount" class="text-muted">
+                      Showing 0 of 0 tests
+                    </div>
+                    <nav aria-label="Test pagination">
+                      <ul class="pagination mb-0">
+                        <li class="page-item disabled">
+                          <a class="page-link" href="#" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                          </a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item">
+                          <a class="page-link" href="#" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                          </a>
+                        </li>
+                      </ul>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Test Healing Tab -->
+      <div class="tab-pane fade" id="test-healing" role="tabpanel" aria-labelledby="test-healing-tab">
+        <div class="row">
+          <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Broken Tests</h5>
+              </div>
+              <div class="card-body p-0">
+                <div id="brokenTestsSkeleton" class="p-3">
+                  <div class="skeleton-loader" style="height: 60px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 60px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 60px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 60px;"></div>
+                </div>
+                <div id="brokenTestsContent" style="display: none;">
+                  <div class="list-group list-group-flush" id="brokenTestsList">
+                    <!-- Will be populated by JavaScript -->
+                  </div>
+                  <div class="p-3 d-grid">
+                    <button id="healAllBtn" class="btn btn-success">
+                      <i class="bi bi-heart-pulse"></i> Heal All Broken Tests
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Test Analysis</h5>
+                <button id="healSelectedBtn" class="btn btn-sm btn-success" disabled>
+                  <i class="bi bi-heart-pulse"></i> Heal Selected Test
+                </button>
+              </div>
+              <div class="card-body test-analysis-container">
+                <div id="testAnalysisSkeleton">
+                  <div class="skeleton-loader title"></div>
+                  <div class="skeleton-loader" style="height: 200px; margin-bottom: 15px;"></div>
+                  <div class="skeleton-loader title"></div>
+                  <div class="skeleton-loader" style="height: 100px;"></div>
+                </div>
+                <div id="testAnalysisContent" style="display: none;">
+                  <div class="test-info mb-4">
+                    <h5 id="analysisTestName">Select a test to analyze</h5>
+                    <p id="analysisTestClass" class="text-muted mb-2"></p>
+                    <div id="analysisTestStatus" class="mb-3"></div>
+                    
+                    <div class="error-details p-3 mb-4 bg-light rounded" id="errorDetails" style="display: none;">
+                      <h6><i class="bi bi-exclamation-triangle text-danger"></i> Error Details</h6>
+                      <div class="mb-2">
+                        <strong>Message:</strong>
+                        <span id="errorMessage" class="text-danger"></span>
+                      </div>
+                      <div>
+                        <strong>Stack Trace:</strong>
+                        <pre id="errorStackTrace" class="mt-2 p-2 bg-dark text-white rounded small"></pre>
+                      </div>
+                    </div>
+                    
+                    <div class="detected-patterns p-3 mb-4 bg-light rounded" id="detectedPatterns" style="display: none;">
+                      <h6><i class="bi bi-search"></i> Detected Failure Patterns</h6>
+                      <div id="patternsList" class="mt-2">
+                        <!-- Will be populated by JavaScript -->
+                      </div>
+                    </div>
+                    
+                    <div class="healing-options p-3 bg-light rounded" id="healingOptions" style="display: none;">
+                      <h6><i class="bi bi-wrench"></i> Healing Suggestions</h6>
+                      <div id="suggestionsList" class="mt-2">
+                        <!-- Will be populated by JavaScript -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div id="noTestSelectedMessage" class="text-center p-4">
+                  <div class="mb-3">
+                    <i class="bi bi-arrow-left-circle" style="font-size: 3rem; color: #6c757d;"></i>
+                  </div>
+                  <h5>Select a Broken Test</h5>
+                  <p class="text-muted">Select a test from the list to view analysis and healing options</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Test Prioritization Tab -->
+      <div class="tab-pane fade" id="test-prioritization" role="tabpanel" aria-labelledby="test-prioritization-tab">
+        <div class="row">
+          <div class="col-lg-5 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Prioritization Configuration</h5>
+              </div>
+              <div class="card-body">
+                <div id="priorityConfigSkeleton">
+                  <div class="skeleton-loader" style="height: 250px;"></div>
+                </div>
+                <div id="priorityConfigContent" style="display: none;">
+                  <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="enablePrioritization" checked>
+                    <label class="form-check-label" for="enablePrioritization">
+                      Enable Test Prioritization
+                    </label>
+                    <div class="form-text">Automatically prioritize tests based on history and other factors</div>
+                  </div>
+                  
+                  <h6 class="mb-3">Prioritization Weights</h6>
+                  
+                  <div class="mb-3">
+                    <label for="failureWeight" class="form-label d-flex justify-content-between">
+                      Failure History
+                      <span id="failureWeightValue">3</span>
+                    </label>
+                    <input type="range" class="form-range" min="0" max="5" step="1" id="failureWeight" value="3">
+                    <div class="form-text">Higher weight for tests with recent failures</div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="changeCorrelationWeight" class="form-label d-flex justify-content-between">
+                      Code Change Correlation
+                      <span id="changeCorrelationWeightValue">4</span>
+                    </label>
+                    <input type="range" class="form-range" min="0" max="5" step="1" id="changeCorrelationWeight" value="4">
+                    <div class="form-text">Higher weight for tests affected by recent code changes</div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="executionTimeWeight" class="form-label d-flex justify-content-between">
+                      Execution Time
+                      <span id="executionTimeWeightValue">2</span>
+                    </label>
+                    <input type="range" class="form-range" min="0" max="5" step="1" id="executionTimeWeight" value="2">
+                    <div class="form-text">Prioritize faster tests (lower execution time)</div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="coverageWeight" class="form-label d-flex justify-content-between">
+                      Code Coverage
+                      <span id="coverageWeightValue">2</span>
+                    </label>
+                    <input type="range" class="form-range" min="0" max="5" step="1" id="coverageWeight" value="2">
+                    <div class="form-text">Higher weight for tests with greater code coverage</div>
+                  </div>
+                  
+                  <h6 class="mb-3">Additional Options</h6>
+                  
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="prioritizeFlaky" checked>
+                    <label class="form-check-label" for="prioritizeFlaky">
+                      Prioritize Flaky Tests
+                    </label>
+                  </div>
+                  
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="prioritizeNew" checked>
+                    <label class="form-check-label" for="prioritizeNew">
+                      Prioritize New Tests
+                    </label>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="maxFastTrackTests" class="form-label">Fast-Track Tests</label>
+                    <input type="number" class="form-control" id="maxFastTrackTests" value="10" min="0" max="50">
+                    <div class="form-text">Number of high-priority tests to fast-track (0 to disable)</div>
+                  </div>
+                  
+                  <div class="d-grid">
+                    <button id="savePriorityConfigBtn" class="btn btn-primary">
+                      Save Configuration
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-7 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Prioritized Test Order</h5>
+                <div>
+                  <select id="prioritizationContext" class="form-select form-select-sm">
+                    <option value="all">All Tests</option>
+                    <option value="changed">Tests Affected by Changes</option>
+                    <option value="failed">Previously Failed Tests</option>
+                  </select>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div id="prioritizedTestsSkeleton" class="p-3">
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px;"></div>
+                </div>
+                <div id="prioritizedTestsContent" style="display: none;">
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th scope="col">Priority</th>
+                          <th scope="col">Test Name</th>
+                          <th scope="col">Factors</th>
+                          <th scope="col">Score</th>
+                          <th scope="col">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="prioritizedTestsTableBody">
+                        <!-- Will be populated by JavaScript -->
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="p-3 d-flex justify-content-between align-items-center">
+                    <span id="prioritizedTestCount" class="text-muted">Showing 0 tests</span>
+                    <button id="runPrioritizedBtn" class="btn btn-primary">
+                      <i class="bi bi-play"></i> Run in Prioritized Order
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Test Execution Tab -->
+      <div class="tab-pane fade" id="test-execution" role="tabpanel" aria-labelledby="test-execution-tab">
+        <!-- Test execution content will be implemented in another part -->
+        <div class="alert alert-info">
+          <h5><i class="bi bi-info-circle"></i> Test Execution</h5>
+          <p>This section allows you to execute tests individually or in batches. You can track test execution progress and view results in real-time.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Detail Modal -->
+  <div class="modal fade" id="testDetailModal" tabindex="-1" aria-labelledby="testDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="testDetailModalLabel">Test Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="testDetailContent">
+            <!-- Will be populated by JavaScript -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="runTestBtn">Run Test</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Status Display -->
+  <div id="modelStatusContainer" class="position-fixed bottom-0 end-0 m-3 p-3 bg-white shadow-sm rounded" style="z-index: 1000; display: none;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">AI Model Status</h6>
+      <button type="button" class="btn-close" aria-label="Close" onclick="toggleModelStatus()"></button>
+    </div>
+    <div id="modelStatusContent">
+      <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <span>Language Model</span>
+          <span id="languageModelStatus" class="model-loading-status model-status-not-loaded">NOT LOADED</span>
+        </div>
+        <div class="progress mt-1" style="height: 4px;">
+          <div id="languageModelProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <span>Embeddings Model</span>
+          <span id="embeddingsModelStatus" class="model-loading-status model-status-not-loaded">NOT LOADED</span>
+        </div>
+        <div class="progress mt-1" style="height: 4px;">
+          <div id="embeddingsModelProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+        </div>
+      </div>
+      <button id="refreshModelStatusBtn" class="btn btn-sm btn-outline-primary mt-2 w-100">Refresh Status</button>
+    </div>
+  </div>
+
+  <!-- JavaScript Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Application JavaScript -->
+  <script src="js/test-management.js"></script>
+</body>
+</html>

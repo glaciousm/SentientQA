@@ -171,7 +171,7 @@ public class SecurityTestGenerationService {
         List<TestCase> securityTests = new ArrayList<>();
         
         // Get method info
-        MethodInfo methodInfo = codeAnalysisService.getMethodInfo(className, methodName);
+        MethodInfo methodInfo = codeAnalysisService.findMethodByClassAndName(className, methodName);
         if (methodInfo == null) {
             log.error("Method not found: {}.{}", className, methodName);
             throw new IllegalArgumentException("Method not found: " + className + "." + methodName);
@@ -192,6 +192,27 @@ public class SecurityTestGenerationService {
         }
         
         return securityTests;
+    }
+    
+    /**
+     * Scan a method for security vulnerabilities using class name and method name
+     * 
+     * @param className The class name
+     * @param methodName The method name
+     * @return List of vulnerability findings
+     */
+    public List<VulnerabilityFinding> scanMethodForVulnerabilities(String className, String methodName) {
+        log.info("Scanning method {}.{} for security vulnerabilities", className, methodName);
+        
+        // Get method info
+        MethodInfo methodInfo = codeAnalysisService.findMethodByClassAndName(className, methodName);
+        if (methodInfo == null) {
+            log.error("Method not found: {}.{}", className, methodName);
+            throw new IllegalArgumentException("Method not found: " + className + "." + methodName);
+        }
+        
+        // Scan for vulnerabilities
+        return scanForVulnerabilities(methodInfo);
     }
     
     /**
@@ -413,7 +434,7 @@ public class SecurityTestGenerationService {
                 .name(testName)
                 .description("Security test for " + finding.getVulnerabilityType() + " vulnerability in " + 
                             methodInfo.getClassName() + "." + methodInfo.getMethodName())
-                .type("Security")
+                .type(TestCase.TestType.SECURITY)
                 .priority(TestCase.TestPriority.HIGH)
                 .status(TestCase.TestStatus.GENERATED)
                 .packageName(methodInfo.getPackageName() + ".security")
@@ -562,6 +583,23 @@ public class SecurityTestGenerationService {
     }
     
     /**
+     * Get all methods for a class
+     * 
+     * @param className The class name
+     * @return Map of method names to method info
+     */
+    private Map<String, MethodInfo> getMethodsForClass(String className) {
+        List<MethodInfo> methods = codeAnalysisService.findMethodsByClassName(className);
+        Map<String, MethodInfo> methodMap = new HashMap<>();
+        
+        for (MethodInfo method : methods) {
+            methodMap.put(method.getMethodName(), method);
+        }
+        
+        return methodMap;
+    }
+    
+    /**
      * Analyze API security based on controller class
      * 
      * @param className The controller class name
@@ -573,7 +611,7 @@ public class SecurityTestGenerationService {
         List<ApiSecurityFinding> findings = new ArrayList<>();
         
         // Get methods for controller
-        Map<String, MethodInfo> methodInfos = codeAnalysisService.getMethodsForClass(className);
+        Map<String, MethodInfo> methodInfos = getMethodsForClass(className);
         
         // Analyze each method
         for (Map.Entry<String, MethodInfo> entry : methodInfos.entrySet()) {

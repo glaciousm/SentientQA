@@ -37,7 +37,7 @@ public class PerformanceTestGenerationService {
         log.info("Generating {} performance test for {}.{}", benchmarkType, className, methodName);
         
         // Get method info
-        MethodInfo methodInfo = codeAnalysisService.getMethodInfo(className, methodName);
+        MethodInfo methodInfo = codeAnalysisService.findMethodByClassAndName(className, methodName);
         if (methodInfo == null) {
             log.error("Method not found: {}.{}", className, methodName);
             throw new IllegalArgumentException("Method not found: " + className + "." + methodName);
@@ -54,7 +54,7 @@ public class PerformanceTestGenerationService {
                 .id(UUID.randomUUID())
                 .name(methodName + "PerformanceTest")
                 .description("Performance test for " + className + "." + methodName)
-                .type("Performance")
+                .type(TestCase.TestType.PERFORMANCE)
                 .priority(TestCase.TestPriority.MEDIUM)
                 .status(TestCase.TestStatus.GENERATED)
                 .packageName(methodInfo.getPackageName() + ".performance")
@@ -69,6 +69,23 @@ public class PerformanceTestGenerationService {
     }
     
     /**
+     * Get all methods for a class
+     * 
+     * @param className The class name
+     * @return Map of method names to method info
+     */
+    private Map<String, MethodInfo> getMethodsForClass(String className) {
+        List<MethodInfo> methods = codeAnalysisService.findMethodsByClassName(className);
+        Map<String, MethodInfo> methodMap = new HashMap<>();
+        
+        for (MethodInfo method : methods) {
+            methodMap.put(method.getMethodName(), method);
+        }
+        
+        return methodMap;
+    }
+    
+    /**
      * Generate multiple performance tests for a class
      * 
      * @param className The class name
@@ -79,7 +96,7 @@ public class PerformanceTestGenerationService {
         log.info("Generating {} performance tests for class {}", benchmarkType, className);
         
         // Get all methods for class
-        Map<String, MethodInfo> methodInfos = codeAnalysisService.getMethodsForClass(className);
+        Map<String, MethodInfo> methodInfos = getMethodsForClass(className);
         List<TestCase> generatedTests = new ArrayList<>();
         
         // Generate performance tests for methods that are suitable

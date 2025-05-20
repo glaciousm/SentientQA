@@ -68,9 +68,8 @@ public class SecurityTestController {
         log.info("Scanning method {}.{} for security vulnerabilities", className, methodName);
         
         try {
-            // Get method info and scan for vulnerabilities
-            List<VulnerabilityFinding> findings = securityTestService.scanForVulnerabilities(
-                securityTestService.codeAnalysisService.getMethodInfo(className, methodName));
+            // Scan for vulnerabilities directly, letting the service handle the method info retrieval
+            List<VulnerabilityFinding> findings = securityTestService.scanMethodForVulnerabilities(className, methodName);
             
             return ResponseEntity.ok(findings);
         } catch (Exception e) {

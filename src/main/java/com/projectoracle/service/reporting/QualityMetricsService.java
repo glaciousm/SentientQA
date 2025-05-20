@@ -318,7 +318,7 @@ public class QualityMetricsService {
      */
     private String getCategoryForTest(TestCase test) {
         if (test.getType() != null) {
-            return test.getType();
+            return test.getType().toString();
         }
         
         // Try to infer from class name

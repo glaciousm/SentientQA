@@ -59,15 +59,22 @@ To manage implementation efficiently (given token constraints), tasks are groupe
   1. Quality Intelligence Dashboard (Completed, Medium)
   2. Support performance & security test generation (Completed, Low)
 
-- **Stage 8 (Long-Term):**
+- **Stage 8 (Current Focus): UI Integration**
+  1. Comprehensive dashboard UI for quality metrics (In Progress, High)
+  2. Test healing and prioritization UI (In Progress, High)
+  3. Security and performance test UI (In Progress, Medium)
+  4. Responsive layout and unified experience (In Progress, Medium)
+  5. Real-time updates and notifications (In Progress, Low)
+
+- **Stage 9 (Long-Term):**
   1. CI/CD integration (Planned, High)
   2. Issue tracker automation (Planned, Medium)
 
-- **Stage 9 (Long-Term):**
+- **Stage 10 (Long-Term):**
   1. Plugin architecture for custom generators & models (Planned, Low)
   2. Cross-language support (Planned, Low)
 
-- **Stage 10 (Long-Term):**
+- **Stage 11 (Long-Term):**
   1. Scalability improvements (Planned, Medium)
   2. Model upgrades & fine-tuning on user code (Planned, Medium)
 
@@ -96,23 +103,28 @@ To manage implementation efficiently (given token constraints), tasks are groupe
 
 ---
 
-## Long-Term Goals (3+ Months)
+## Current and Long-Term Goals
 
-| Task                                                                                         | Status    | Priority | Notes                                              |
-|----------------------------------------------------------------------------------------------|-----------|----------|----------------------------------------------------|
-| 1. Knowledge Integration System (API docs, project docs, code comments, test history)        | Completed | High     | External knowledge enrichment for test generation. |
-| 2. Jira/Confluence ingestion for knowledge integration                                       | Completed | Medium   | Link tests to requirements for traceability.       |
-| 3. NLP query interface for tests (e.g., "Generate tests for invalid login")                  | Completed | Medium   | Natural language to test generation.               |
-| 4. Expand self-healing (AI-driven fixes & re-test)                                           | Completed | High     | Automate test repair and validation.               |
-| 5. Implement test prioritization (historical data & coverage heuristics)                     | Completed | Medium   | Run high-risk tests first in CI pipelines.         |
-| 6. Quality Intelligence Dashboard (failure trends, flakiness metrics)                        | Completed | Medium   | Provide analytics and insights.                    |
-| 7. Support performance & security test generation                                            | Completed | Low      | Generate JMH benchmarks and security tests.        |
-| 8. CI/CD integration (Docker, Jenkins, GitHub Actions plugins)                               | Planned   | High     | Seamless enterprise pipeline compatibility.        |
-| 9. Issue tracker automation (auto-create Jira tickets for failures)                          | Planned   | Medium   | Close the feedback loop with development workflow. |
-| 10. Plugin architecture for custom generators & models                                       | Planned   | Low      | Enable extensibility for domain-specific needs.    |
-| 11. Cross-language support (e.g., Python)                                                    | Planned   | Low      | Broaden platform beyond Java.                      |
-| 12. Scalability improvements (distributed storage & execution)                               | Planned   | Medium   | Handle enterprise-scale projects.                  |
-| 13. Model upgrades & fine-tuning on user code                                                | Planned   | Medium   | Improve test quality with advanced AI models.      |
+| Task                                                                                         | Status      | Priority | Notes                                              |
+|----------------------------------------------------------------------------------------------|-------------|----------|----------------------------------------------------|
+| 1. Knowledge Integration System (API docs, project docs, code comments, test history)        | Completed   | High     | External knowledge enrichment for test generation. |
+| 2. Jira/Confluence ingestion for knowledge integration                                       | Completed   | Medium   | Link tests to requirements for traceability.       |
+| 3. NLP query interface for tests (e.g., "Generate tests for invalid login")                  | Completed   | Medium   | Natural language to test generation.               |
+| 4. Expand self-healing (AI-driven fixes & re-test)                                           | Completed   | High     | Automate test repair and validation.               |
+| 5. Implement test prioritization (historical data & coverage heuristics)                     | Completed   | Medium   | Run high-risk tests first in CI pipelines.         |
+| 6. Quality Intelligence Dashboard (failure trends, flakiness metrics)                        | Completed   | Medium   | Provide analytics and insights.                    |
+| 7. Support performance & security test generation                                            | Completed   | Low      | Generate JMH benchmarks and security tests.        |
+| 8. Comprehensive UI for quality metrics visualization                                        | In Progress | High     | Interactive dashboards with visualizations.        |
+| 9. Test healing and prioritization UI                                                        | In Progress | High     | User-friendly interface for test management.       |
+| 10. Security and performance testing UI                                                      | In Progress | Medium   | Integrated GUI for specialized testing.            |
+| 11. Responsive unified user experience                                                       | In Progress | Medium   | Consistent experience across devices.              |
+| 12. Real-time test execution updates                                                         | In Progress | Low      | WebSocket updates for live test results.           |
+| 13. CI/CD integration (Docker, Jenkins, GitHub Actions plugins)                              | Planned     | High     | Seamless enterprise pipeline compatibility.        |
+| 14. Issue tracker automation (auto-create Jira tickets for failures)                         | Planned     | Medium   | Close the feedback loop with development workflow. |
+| 15. Plugin architecture for custom generators & models                                       | Planned     | Low      | Enable extensibility for domain-specific needs.    |
+| 16. Cross-language support (e.g., Python)                                                    | Planned     | Low      | Broaden platform beyond Java.                      |
+| 17. Scalability improvements (distributed storage & execution)                               | Planned     | Medium   | Handle enterprise-scale projects.                  |
+| 18. Model upgrades & fine-tuning on user code                                                | Planned     | Medium   | Improve test quality with advanced AI models.      |
 
 ---
 

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Oracle - Quality Intelligence Dashboard</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <!-- Chart.js -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+  <!-- Full-page loading overlay -->
+  <div id="pageLoadingOverlay" class="loading-overlay">
+    <div class="loading-spinner-container">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="loading-message">Loading Quality Intelligence Dashboard...</p>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="index.html">
+        <i class="bi bi-radar"></i> Project Oracle
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="index.html">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="dashboard.html">Quality Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="test-management.html">Test Management</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="security-tests.html">Security Testing</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="performance-tests.html">Performance Testing</a>
+          </li>
+        </ul>
+        <div class="d-flex">
+          <button id="modelStatusBtn" class="btn btn-outline-secondary" onclick="toggleModelStatus()">
+            <i class="bi bi-hdd"></i> Model Status
+          </button>
+          <button class="btn btn-outline-primary ms-2">
+            <i class="bi bi-person-circle"></i> Admin
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container-fluid py-4">
+    <!-- Dashboard Header -->
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <h1 class="mb-0">Quality Intelligence Dashboard</h1>
+        <p class="text-muted">Comprehensive view of test health and quality metrics</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <div class="btn-group" role="group">
+          <button id="refreshDashboardBtn" class="btn btn-primary">
+            <i class="bi bi-arrow-clockwise"></i> Refresh Data
+          </button>
+          <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#dashboardConfigModal">
+            <i class="bi bi-gear"></i> Configure
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Summary Cards -->
+    <div class="row mb-4">
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100 bg-white border-0 shadow-sm hover-lift quality-card">
+          <div class="card-body d-flex align-items-center">
+            <div class="quality-card-icon bg-success-light">
+              <i class="bi bi-check-circle text-success"></i>
+            </div>
+            <div class="ms-3">
+              <h6 class="text-muted mb-1">Overall Health</h6>
+              <div class="d-flex align-items-baseline">
+                <h2 class="mb-0 me-2" id="healthScoreValue">--</h2>
+                <span class="fs-5 text-muted">/100</span>
+              </div>
+              <div class="progress mt-2" style="height: 4px;">
+                <div id="healthScoreProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100 bg-white border-0 shadow-sm hover-lift quality-card">
+          <div class="card-body d-flex align-items-center">
+            <div class="quality-card-icon bg-primary-light">
+              <i class="bi bi-speedometer2 text-primary"></i>
+            </div>
+            <div class="ms-3">
+              <h6 class="text-muted mb-1">Pass Rate</h6>
+              <div class="d-flex align-items-baseline">
+                <h2 class="mb-0 me-2" id="passRateValue">--</h2>
+                <span class="fs-5 text-muted">%</span>
+              </div>
+              <div class="progress mt-2" style="height: 4px;">
+                <div id="passRateProgress" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100 bg-white border-0 shadow-sm hover-lift quality-card">
+          <div class="card-body d-flex align-items-center">
+            <div class="quality-card-icon bg-warning-light">
+              <i class="bi bi-exclamation-triangle text-warning"></i>
+            </div>
+            <div class="ms-3">
+              <h6 class="text-muted mb-1">Flaky Tests</h6>
+              <div class="d-flex align-items-baseline">
+                <h2 class="mb-0 me-2" id="flakyTestsValue">--</h2>
+                <span id="flakyTestsPercent" class="fs-5 text-muted">--%</span>
+              </div>
+              <div class="mt-1">
+                <span id="flakyTestsTrend" class="badge bg-warning-light text-warning">
+                  <i class="bi bi-arrow-right"></i> No change
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100 bg-white border-0 shadow-sm hover-lift quality-card">
+          <div class="card-body d-flex align-items-center">
+            <div class="quality-card-icon bg-info-light">
+              <i class="bi bi-code-square text-info"></i>
+            </div>
+            <div class="ms-3">
+              <h6 class="text-muted mb-1">Test Coverage</h6>
+              <div class="d-flex align-items-baseline">
+                <h2 class="mb-0 me-2" id="testCoverageValue">--</h2>
+                <span class="fs-5 text-muted">%</span>
+              </div>
+              <div class="progress mt-2" style="height: 4px;">
+                <div id="coverageProgress" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+      <!-- Test Status Distribution -->
+      <div class="col-lg-4 mb-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Test Status Distribution</h5>
+            <button class="btn btn-sm btn-link text-muted" data-bs-toggle="tooltip" title="View Details">
+              <i class="bi bi-three-dots"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="testStatusCardSkeleton" class="skeleton-loading">
+              <div class="skeleton-loader circle mx-auto"></div>
+              <div class="skeleton-loader title mx-auto mt-3"></div>
+              <div class="skeleton-loader line w-75 mx-auto"></div>
+              <div class="skeleton-loader line w-75 mx-auto"></div>
+            </div>
+            <div id="testStatusCard" class="chart-container" style="display: none;">
+              <canvas id="testStatusChart"></canvas>
+            </div>
+            <div class="test-stats-legend row text-center mt-3">
+              <div class="col-3">
+                <div class="legend-item">
+                  <span class="legend-color bg-success"></span>
+                  <h6 id="passedTestsCount" class="mb-0">--</h6>
+                  <small class="text-muted">Passed</small>
+                </div>
+              </div>
+              <div class="col-3">
+                <div class="legend-item">
+                  <span class="legend-color bg-danger"></span>
+                  <h6 id="failedTestsCount" class="mb-0">--</h6>
+                  <small class="text-muted">Failed</small>
+                </div>
+              </div>
+              <div class="col-3">
+                <div class="legend-item">
+                  <span class="legend-color bg-warning"></span>
+                  <h6 id="brokenTestsCount" class="mb-0">--</h6>
+                  <small class="text-muted">Broken</small>
+                </div>
+              </div>
+              <div class="col-3">
+                <div class="legend-item">
+                  <span class="legend-color bg-info"></span>
+                  <h6 id="flakyTestsCount" class="mb-0">--</h6>
+                  <small class="text-muted">Flaky</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Test Failure Trend -->
+      <div class="col-lg-8 mb-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Test Failure Trend</h5>
+            <div>
+              <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-secondary time-range-btn active" data-range="7">7D</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary time-range-btn" data-range="30">30D</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary time-range-btn" data-range="90">90D</button>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="failureTrendSkeleton" class="skeleton-loading">
+              <div class="skeleton-loader" style="height: 250px;"></div>
+            </div>
+            <div id="failureTrendChart" class="chart-container" style="display: none;">
+              <canvas id="trendChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health by Category and Most Failing Tests -->
+    <div class="row mb-4">
+      <!-- Health by Category -->
+      <div class="col-lg-6 mb-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Health by Category</h5>
+            <button class="btn btn-sm btn-link text-muted" data-bs-toggle="tooltip" title="View All Categories">
+              <i class="bi bi-arrow-right-circle"></i>
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div id="healthByCategorySkeleton" class="p-3">
+              <div class="skeleton-loader title"></div>
+              <div class="skeleton-loader" style="height: 40px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 40px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 40px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 40px;"></div>
+            </div>
+            <div id="healthByCategoryContent" class="table-responsive" style="display: none;">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th class="text-center">Tests</th>
+                    <th class="text-center">Pass Rate</th>
+                    <th class="text-center">Health</th>
+                  </tr>
+                </thead>
+                <tbody id="categoryHealthTableBody">
+                  <!-- Will be populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Most Frequently Failing Tests -->
+      <div class="col-lg-6 mb-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Most Frequently Failing Tests</h5>
+            <button class="btn btn-sm btn-link text-muted" data-bs-toggle="tooltip" title="View All">
+              <i class="bi bi-arrow-right-circle"></i>
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div id="failingTestsSkeleton" class="p-3">
+              <div class="skeleton-loader title"></div>
+              <div class="skeleton-loader" style="height: 40px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 40px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 40px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 40px;"></div>
+            </div>
+            <div id="failingTestsContent" class="table-responsive" style="display: none;">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Test Name</th>
+                    <th class="text-center">Failures</th>
+                    <th class="text-center">Failure Rate</th>
+                    <th class="text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="failingTestsTableBody">
+                  <!-- Will be populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flaky Tests and Recent Executions -->
+    <div class="row">
+      <!-- Flaky Tests -->
+      <div class="col-lg-6 mb-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Flaky Tests</h5>
+            <button id="viewAllFlakyTestsBtn" class="btn btn-sm btn-primary">
+              View All
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div id="flakyTestsSkeleton" class="p-3">
+              <div class="skeleton-loader title"></div>
+              <div class="skeleton-loader" style="height: 60px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 60px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 60px;"></div>
+            </div>
+            <div id="flakyTestsContent" style="display: none;">
+              <div id="flakyTestsList" class="list-group list-group-flush">
+                <!-- Will be populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Test Executions -->
+      <div class="col-lg-6 mb-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Recent Test Executions</h5>
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                Filter
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item active" href="#">All Results</a></li>
+                <li><a class="dropdown-item" href="#">Passed Only</a></li>
+                <li><a class="dropdown-item" href="#">Failed Only</a></li>
+                <li><a class="dropdown-item" href="#">Flaky Only</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div id="recentExecutionsSkeleton" class="p-3">
+              <div class="skeleton-loader title"></div>
+              <div class="skeleton-loader" style="height: 50px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 50px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 50px; margin-bottom: 15px;"></div>
+              <div class="skeleton-loader" style="height: 50px;"></div>
+            </div>
+            <div id="recentExecutionsContent" style="display: none;">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead>
+                    <tr>
+                      <th>Test</th>
+                      <th>Time</th>
+                      <th class="text-center">Status</th>
+                      <th>Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recentExecutionsTableBody">
+                    <!-- Will be populated by JavaScript -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Status Display -->
+  <div id="modelStatusContainer" class="position-fixed bottom-0 end-0 m-3 p-3 bg-white shadow-sm rounded" style="z-index: 1000; display: none;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">AI Model Status</h6>
+      <button type="button" class="btn-close" aria-label="Close" onclick="toggleModelStatus()"></button>
+    </div>
+    <div id="modelStatusContent">
+      <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <span>Language Model</span>
+          <span id="languageModelStatus" class="model-loading-status model-status-not-loaded">NOT LOADED</span>
+        </div>
+        <div class="progress mt-1" style="height: 4px;">
+          <div id="languageModelProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <span>Embeddings Model</span>
+          <span id="embeddingsModelStatus" class="model-loading-status model-status-not-loaded">NOT LOADED</span>
+        </div>
+        <div class="progress mt-1" style="height: 4px;">
+          <div id="embeddingsModelProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+        </div>
+      </div>
+      <button id="refreshModelStatusBtn" class="btn btn-sm btn-outline-primary mt-2 w-100">Refresh Status</button>
+    </div>
+  </div>
+
+  <!-- Dashboard Configuration Modal -->
+  <div class="modal fade" id="dashboardConfigModal" tabindex="-1" aria-labelledby="dashboardConfigModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="dashboardConfigModalLabel">Dashboard Configuration</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Time Range</label>
+            <select class="form-select" id="dashboardTimeRange">
+              <option value="7">Last 7 days</option>
+              <option value="30" selected>Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="180">Last 6 months</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Refresh Interval</label>
+            <select class="form-select" id="dashboardRefreshInterval">
+              <option value="0">Manual refresh only</option>
+              <option value="30">Every 30 seconds</option>
+              <option value="60" selected>Every minute</option>
+              <option value="300">Every 5 minutes</option>
+              <option value="600">Every 10 minutes</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="showFlakyTestsSwitch" checked>
+              <label class="form-check-label" for="showFlakyTestsSwitch">Show Flaky Tests</label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="showFailureTrendSwitch" checked>
+              <label class="form-check-label" for="showFailureTrendSwitch">Show Failure Trend</label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="showCategoryHealthSwitch" checked>
+              <label class="form-check-label" for="showCategoryHealthSwitch">Show Category Health</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button id="saveConfigBtn" type="button" class="btn btn-primary">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flaky Test Details Modal -->
+  <div class="modal fade" id="flakyTestDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Flaky Test Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="flakyTestDetailsContent">
+            <!-- Will be populated by JavaScript -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="healFlakyTestBtn">Heal Test</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+  <!-- Application JavaScript -->
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

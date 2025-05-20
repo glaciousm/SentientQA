@@ -1,0 +1,307 @@
+/* test-management.css - Styles for the test management page */
+
+/* Test library table styles */
+.sortable {
+  cursor: pointer;
+}
+
+.sort-icon {
+  font-size: 0.8rem;
+  opacity: 0.5;
+  margin-left: 0.25rem;
+  transition: opacity 0.2s ease;
+}
+
+.sortable:hover .sort-icon {
+  opacity: 1;
+}
+
+.sort-active .sort-icon {
+  opacity: 1;
+}
+
+/* Test status indicators */
+.test-status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.test-status-passed {
+  background-color: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+}
+
+.test-status-failed {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.test-status-broken {
+  background-color: rgba(253, 126, 20, 0.1);
+  color: #fd7e14;
+}
+
+.test-status-healed {
+  background-color: rgba(23, 162, 184, 0.1);
+  color: #17a2b8;
+}
+
+/* Broken tests list */
+.broken-test-item {
+  transition: background-color 0.2s ease;
+  border-left: 3px solid #fd7e14;
+  padding: 1rem;
+}
+
+.broken-test-item:hover {
+  background-color: rgba(253, 126, 20, 0.05);
+}
+
+.broken-test-item.active {
+  background-color: rgba(253, 126, 20, 0.1);
+  border-left-width: 5px;
+}
+
+.broken-test-item .badge {
+  font-size: 0.75rem;
+}
+
+.error-type {
+  display: inline-block;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Test analysis container */
+.test-analysis-container {
+  min-height: 400px;
+}
+
+/* Pattern items */
+.pattern-item {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  border-left: 4px solid #ffc107;
+  background-color: rgba(255, 193, 7, 0.05);
+}
+
+.pattern-item h6 {
+  display: flex;
+  align-items: center;
+}
+
+.pattern-item h6 i {
+  margin-right: 0.5rem;
+}
+
+.pattern-confidence {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 50px;
+  margin-left: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.pattern-high {
+  border-left-color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.05);
+}
+
+.pattern-medium {
+  border-left-color: #fd7e14;
+  background-color: rgba(253, 126, 20, 0.05);
+}
+
+.pattern-low {
+  border-left-color: #ffc107;
+  background-color: rgba(255, 193, 7, 0.05);
+}
+
+.suggestion-item {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background-color: rgba(40, 167, 69, 0.05);
+  border-radius: 4px;
+  border-left: 3px solid #28a745;
+}
+
+/* Priority sliders */
+.form-range::-webkit-slider-thumb {
+  background-color: var(--primary);
+}
+
+.form-range::-moz-range-thumb {
+  background-color: var(--primary);
+}
+
+.form-range::-ms-thumb {
+  background-color: var(--primary);
+}
+
+/* Priority indicators */
+.priority-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: white;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.priority-high {
+  background-color: #dc3545;
+}
+
+.priority-medium {
+  background-color: #fd7e14;
+}
+
+.priority-low {
+  background-color: #ffc107;
+  color: #343a40;
+}
+
+/* Priority score */
+.priority-score {
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background-color: rgba(67, 97, 238, 0.1);
+  color: var(--primary);
+}
+
+/* Priority factor badges */
+.priority-factor {
+  display: inline-block;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  margin-right: 0.25rem;
+  margin-bottom: 0.25rem;
+  background-color: rgba(67, 97, 238, 0.05);
+}
+
+.factor-failure {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.factor-change {
+  background-color: rgba(253, 126, 20, 0.1);
+  color: #fd7e14;
+}
+
+.factor-coverage {
+  background-color: rgba(23, 162, 184, 0.1);
+  color: #17a2b8;
+}
+
+.factor-time {
+  background-color: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+}
+
+.factor-new {
+  background-color: rgba(111, 66, 193, 0.1);
+  color: #6f42c1;
+}
+
+/* Test detail styles */
+.test-detail-header {
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.code-block {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 0.875rem;
+  overflow-x: auto;
+}
+
+.test-assertions {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: rgba(40, 167, 69, 0.05);
+  border-left: 3px solid #28a745;
+  border-radius: 4px;
+}
+
+.test-assertions li {
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Test execution history */
+.execution-history {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.execution-item {
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.execution-successful {
+  background-color: rgba(40, 167, 69, 0.05);
+  border-left: 3px solid #28a745;
+}
+
+.execution-failed {
+  background-color: rgba(220, 53, 69, 0.05);
+  border-left: 3px solid #dc3545;
+}
+
+.execution-info {
+  flex-grow: 1;
+  margin-left: 0.5rem;
+}
+
+.execution-date {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.execution-error {
+  font-size: 0.8rem;
+  color: #dc3545;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .test-analysis-container {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .priority-indicator {
+    width: 25px;
+    height: 25px;
+    font-size: 0.8rem;
+  }
+  
+  .priority-factor {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.3rem;
+  }
+}

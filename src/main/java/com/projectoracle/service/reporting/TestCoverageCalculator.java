@@ -36,7 +36,19 @@ public class TestCoverageCalculator {
     private String sourceDir;
 
     /**
+     * Calculate overall coverage as a percentage
+     * 
+     * @return Overall code coverage percentage (0-100)
+     */
+    public double calculateOverallCoverage() {
+        CoverageReport report = calculateCoverage();
+        return report.getCoveragePercentage();
+    }
+    
+    /**
      * Calculate test coverage for a source directory
+     * 
+     * @return Detailed coverage report
      */
     public CoverageReport calculateCoverage() {
         logger.info("Calculating test coverage for source directory: {}", sourceDir);

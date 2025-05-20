@@ -1,0 +1,285 @@
+/* dashboard.css - Additional styles for the Quality Intelligence Dashboard */
+
+/* Quality card styles */
+.quality-card {
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.quality-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.quality-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  font-size: 24px;
+}
+
+.bg-primary-light {
+  background-color: rgba(67, 97, 238, 0.1);
+}
+
+.bg-success-light {
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.bg-warning-light {
+  background-color: rgba(255, 193, 7, 0.1);
+}
+
+.bg-danger-light {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.bg-info-light {
+  background-color: rgba(23, 162, 184, 0.1);
+}
+
+/* Chart container */
+.chart-container {
+  position: relative;
+  height: 250px;
+  width: 100%;
+}
+
+/* Legend styles */
+.test-stats-legend {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
+.legend-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.legend-color {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  margin-bottom: 0.25rem;
+}
+
+/* Health score indicator */
+.health-score {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto;
+}
+
+.health-score-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Category health bars */
+.category-bar {
+  height: 8px;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  overflow: hidden;
+}
+
+.category-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Health indicator colors */
+.health-excellent {
+  background-color: #28a745;
+}
+
+.health-good {
+  background-color: #4cc9f0;
+}
+
+.health-fair {
+  background-color: #ffc107;
+}
+
+.health-poor {
+  background-color: #fd7e14;
+}
+
+.health-critical {
+  background-color: #dc3545;
+}
+
+/* Flaky test list */
+.flaky-test-item {
+  border-left: 3px solid #ffc107;
+  transition: background-color 0.2s ease;
+  padding: 0.75rem 1rem;
+}
+
+.flaky-test-item:hover {
+  background-color: rgba(255, 193, 7, 0.05);
+}
+
+.flaky-test-item .badge {
+  font-size: 0.75rem;
+}
+
+.flaky-test-details {
+  font-size: 0.875rem;
+}
+
+.flaky-pattern {
+  font-size: 0.8rem;
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
+.execution-alternating {
+  font-size: 0.75rem;
+  color: #fd7e14;
+}
+
+/* Recent executions */
+.execution-row td {
+  vertical-align: middle;
+  padding: 0.5rem 1rem;
+}
+
+.execution-time {
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+.execution-status {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.status-passed {
+  background-color: #28a745;
+}
+
+.status-failed {
+  background-color: #dc3545;
+}
+
+.status-flaky {
+  background-color: #ffc107;
+}
+
+.execution-duration {
+  font-size: 0.8rem;
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+}
+
+/* Animation for trending indicators */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.trend-up,
+.trend-down {
+  animation: pulse 2s infinite;
+}
+
+/* Fix Bootstrap tooltip width */
+.tooltip {
+  --bs-tooltip-max-width: 300px;
+}
+
+/* Action button styles */
+.action-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Failure rate indicator */
+.failure-rate-bar {
+  height: 10px;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+.failure-rate-fill {
+  height: 100%;
+  background-color: #dc3545;
+  border-radius: 5px;
+}
+
+/* No data message */
+.no-data {
+  padding: 2rem;
+  text-align: center;
+  color: #6c757d;
+}
+
+.no-data i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .card {
+    margin-bottom: 1rem;
+  }
+  
+  .chart-container {
+    height: 200px;
+  }
+  
+  .quality-card-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .quality-card {
+    margin-bottom: 1rem;
+  }
+  
+  .quality-card:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .chart-container {
+    height: 180px;
+  }
+  
+  .card-header h5 {
+    font-size: 1rem;
+  }
+  
+  .time-range-btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+  }
+}

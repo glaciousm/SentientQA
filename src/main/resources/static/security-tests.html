@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Oracle - Security Testing</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/test-management.css">
+  <link rel="stylesheet" href="css/security-tests.css">
+</head>
+<body>
+  <!-- Full-page loading overlay -->
+  <div id="pageLoadingOverlay" class="loading-overlay">
+    <div class="loading-spinner-container">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="loading-message">Loading Security Testing...</p>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="index.html">
+        <i class="bi bi-radar"></i> Project Oracle
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="index.html">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard.html">Quality Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="test-management.html">Test Management</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="security-tests.html">Security Testing</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="performance-tests.html">Performance Testing</a>
+          </li>
+        </ul>
+        <div class="d-flex">
+          <button id="modelStatusBtn" class="btn btn-outline-secondary" onclick="toggleModelStatus()">
+            <i class="bi bi-hdd"></i> Model Status
+          </button>
+          <button class="btn btn-outline-primary ms-2">
+            <i class="bi bi-person-circle"></i> Admin
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <h1 class="mb-0">Security Testing</h1>
+        <p class="text-muted">Generate security tests and scan for vulnerabilities</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <div class="btn-group" role="group">
+          <button id="refreshBtn" class="btn btn-primary">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+          </button>
+          <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#configModal">
+            <i class="bi bi-gear"></i> Configure
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-4" id="securityTestingTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="security-tests-tab" data-bs-toggle="tab" data-bs-target="#security-tests" type="button" role="tab" aria-controls="security-tests" aria-selected="true">
+          <i class="bi bi-shield-check"></i> Security Tests
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="vulnerability-scan-tab" data-bs-toggle="tab" data-bs-target="#vulnerability-scan" type="button" role="tab" aria-controls="vulnerability-scan" aria-selected="false">
+          <i class="bi bi-shield-exclamation"></i> Vulnerability Scanning
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="api-security-tab" data-bs-toggle="tab" data-bs-target="#api-security" type="button" role="tab" aria-controls="api-security" aria-selected="false">
+          <i class="bi bi-lock"></i> API Security Analysis
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="securityTestingTabContent">
+      <!-- Security Tests Tab -->
+      <div class="tab-pane fade show active" id="security-tests" role="tabpanel" aria-labelledby="security-tests-tab">
+        <div class="row">
+          <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Generate Security Tests</h5>
+              </div>
+              <div class="card-body">
+                <form id="securityTestGenerationForm">
+                  <div class="mb-3">
+                    <label for="className" class="form-label">Class Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="className" placeholder="com.example.MyClass" required>
+                    <div class="form-text">Fully qualified class name</div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="methodName" class="form-label">Method Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="methodName" placeholder="processData" required>
+                    <div class="form-text">Name of the method to test</div>
+                  </div>
+                  <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-shield-plus"></i> Generate Security Tests
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Security Test Results</h5>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-secondary" id="exportSecurityTestsBtn">
+                    <i class="bi bi-download"></i> Export
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary" id="runAllSecurityTestsBtn">
+                    <i class="bi bi-play"></i> Run All
+                  </button>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div id="securityTestsSkeleton" class="p-3">
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px;"></div>
+                </div>
+                <div id="securityTestsContent" style="display: none;">
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="securityTestsTable">
+                      <thead>
+                        <tr>
+                          <th scope="col" class="sortable" data-sort="name">Test Name <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                          <th scope="col" class="sortable" data-sort="vulnerability">Vulnerability Type <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                          <th scope="col" class="sortable" data-sort="class">Target Class <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                          <th scope="col" class="sortable" data-sort="severity">Severity <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                          <th scope="col" class="sortable" data-sort="status">Status <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                          <th scope="col">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="securityTestsTableBody">
+                        <!-- Will be populated by JavaScript -->
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center p-3">
+                    <div id="securityTestCount" class="text-muted">
+                      Showing 0 of 0 security tests
+                    </div>
+                    <nav aria-label="Security test pagination">
+                      <ul class="pagination mb-0">
+                        <li class="page-item disabled">
+                          <a class="page-link" href="#" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                          </a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item">
+                          <a class="page-link" href="#" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                          </a>
+                        </li>
+                      </ul>
+                    </nav>
+                  </div>
+                </div>
+                
+                <div id="noSecurityTestsMessage" class="text-center p-5" style="display: none;">
+                  <div class="mb-3">
+                    <i class="bi bi-shield text-muted" style="font-size: 3rem;"></i>
+                  </div>
+                  <h5>No Security Tests Found</h5>
+                  <p class="text-muted">Generate security tests for your methods to see them here</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vulnerability Scanning Tab -->
+      <div class="tab-pane fade" id="vulnerability-scan" role="tabpanel" aria-labelledby="vulnerability-scan-tab">
+        <div class="row">
+          <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Scan Method</h5>
+              </div>
+              <div class="card-body">
+                <form id="methodScanForm">
+                  <div class="mb-3">
+                    <label for="scanClassName" class="form-label">Class Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="scanClassName" placeholder="com.example.MyClass" required>
+                    <div class="form-text">Fully qualified class name</div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="scanMethodName" class="form-label">Method Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="scanMethodName" placeholder="processData" required>
+                    <div class="form-text">Name of the method to scan</div>
+                  </div>
+                  <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-search"></i> Scan for Vulnerabilities
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Vulnerability Findings</h5>
+              </div>
+              <div class="card-body">
+                <div id="vulnerabilitiesSkeleton" style="display: none;">
+                  <div class="skeleton-loader" style="height: 120px; margin-bottom: 15px;"></div>
+                  <div class="skeleton-loader" style="height: 120px; margin-bottom: 15px;"></div>
+                  <div class="skeleton-loader" style="height: 120px;"></div>
+                </div>
+                <div id="vulnerabilityFindings">
+                  <div class="text-center p-5" id="noVulnerabilitiesMessage">
+                    <div class="mb-3">
+                      <i class="bi bi-shield-check text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>No Vulnerabilities Scanned</h5>
+                    <p class="text-muted">Scan a method to identify potential security vulnerabilities</p>
+                  </div>
+                  <div id="vulnerabilityList" class="accordion" style="display: none;">
+                    <!-- Will be populated by JavaScript -->
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer bg-white" id="vulnerabilitySummary" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span id="totalVulnerabilities">0</span> vulnerabilities found (<span id="highVulnerabilities" class="text-danger">0</span> high, <span id="mediumVulnerabilities" class="text-warning">0</span> medium, <span id="lowVulnerabilities" class="text-success">0</span> low)
+                  </div>
+                  <button class="btn btn-sm btn-primary" id="generateAllSecurityTestsBtn">
+                    <i class="bi bi-shield-plus"></i> Generate Tests for All
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- API Security Analysis Tab -->
+      <div class="tab-pane fade" id="api-security" role="tabpanel" aria-labelledby="api-security-tab">
+        <div class="row">
+          <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Analyze API Security</h5>
+              </div>
+              <div class="card-body">
+                <form id="apiSecurityForm">
+                  <div class="mb-3">
+                    <label for="controllerClassName" class="form-label">Controller Class <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="controllerClassName" placeholder="com.example.MyController" required>
+                    <div class="form-text">Fully qualified controller class name</div>
+                  </div>
+                  <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-lock"></i> Analyze API Security
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">API Security Analysis</h5>
+              </div>
+              <div class="card-body">
+                <div id="apiSecuritySkeleton" style="display: none;">
+                  <div class="skeleton-loader" style="height: 150px; margin-bottom: 15px;"></div>
+                  <div class="skeleton-loader" style="height: 150px; margin-bottom: 15px;"></div>
+                </div>
+                <div id="apiSecurityContent">
+                  <div class="text-center p-5" id="noApiSecurityMessage">
+                    <div class="mb-3">
+                      <i class="bi bi-lock text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>No API Security Analysis</h5>
+                    <p class="text-muted">Analyze a controller to assess its API security posture</p>
+                  </div>
+                  <div id="apiSecurityResults" style="display: none;">
+                    <div class="mb-4" id="apiSecurityOverview">
+                      <div class="card bg-light">
+                        <div class="card-body">
+                          <h5 class="card-title">Security Overview</h5>
+                          <div class="row mt-3">
+                            <div class="col-md-6">
+                              <div class="d-flex align-items-center">
+                                <div class="security-score-circle" id="securityScoreCircle">
+                                  <span id="securityScore">0</span>
+                                </div>
+                                <div class="ms-3">
+                                  <h6 class="mb-1">Security Score</h6>
+                                  <p class="mb-0 text-muted small" id="securityScoreText">Not Analyzed</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="col-md-6">
+                              <h6 class="mb-2">Endpoints Analyzed</h6>
+                              <p class="mb-0" id="endpointsAnalyzed">0 endpoints in 0 controllers</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div id="apiEndpointsList">
+                      <!-- Will be populated by JavaScript -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security Test Detail Modal -->
+  <div class="modal fade" id="securityTestDetailModal" tabindex="-1" aria-labelledby="securityTestDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="securityTestDetailModalLabel">Security Test Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="securityTestDetailContent">
+            <!-- Will be populated by JavaScript -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="runSecurityTestBtn">Run Test</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configuration Modal -->
+  <div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="configModalLabel">Security Testing Configuration</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Enabled Vulnerability Types</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="vulnTypeSqlInjection" checked>
+              <label class="form-check-label" for="vulnTypeSqlInjection">
+                SQL Injection
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="vulnTypeXss" checked>
+              <label class="form-check-label" for="vulnTypeXss">
+                Cross-Site Scripting (XSS)
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="vulnTypePathTraversal" checked>
+              <label class="form-check-label" for="vulnTypePathTraversal">
+                Path Traversal
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="vulnTypeInsecureDeserialization" checked>
+              <label class="form-check-label" for="vulnTypeInsecureDeserialization">
+                Insecure Deserialization
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="vulnTypeCsrf" checked>
+              <label class="form-check-label" for="vulnTypeCsrf">
+                Cross-Site Request Forgery (CSRF)
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="vulnTypeWeakCryptography" checked>
+              <label class="form-check-label" for="vulnTypeWeakCryptography">
+                Weak Cryptography
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="vulnTypeLoggingSensitiveData" checked>
+              <label class="form-check-label" for="vulnTypeLoggingSensitiveData">
+                Logging Sensitive Data
+              </label>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="aiAnalysisThreshold" class="form-label d-flex justify-content-between">
+              AI Analysis Confidence Threshold
+              <span id="aiAnalysisThresholdValue">70%</span>
+            </label>
+            <input type="range" class="form-range" min="0" max="100" step="5" id="aiAnalysisThreshold" value="70">
+            <div class="form-text">Higher values reduce false positives but may miss some vulnerabilities</div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="maxTestsPerMethod" class="form-label">Max Tests Per Method</label>
+            <input type="number" class="form-control" id="maxTestsPerMethod" value="5" min="1" max="20">
+            <div class="form-text">Limit the number of security tests generated per method</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveConfigBtn">Save Configuration</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Status Display -->
+  <div id="modelStatusContainer" class="position-fixed bottom-0 end-0 m-3 p-3 bg-white shadow-sm rounded" style="z-index: 1000; display: none;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">AI Model Status</h6>
+      <button type="button" class="btn-close" aria-label="Close" onclick="toggleModelStatus()"></button>
+    </div>
+    <div id="modelStatusContent">
+      <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <span>Language Model</span>
+          <span id="languageModelStatus" class="model-loading-status model-status-not-loaded">NOT LOADED</span>
+        </div>
+        <div class="progress mt-1" style="height: 4px;">
+          <div id="languageModelProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <span>Embeddings Model</span>
+          <span id="embeddingsModelStatus" class="model-loading-status model-status-not-loaded">NOT LOADED</span>
+        </div>
+        <div class="progress mt-1" style="height: 4px;">
+          <div id="embeddingsModelProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+        </div>
+      </div>
+      <button id="refreshModelStatusBtn" class="btn btn-sm btn-outline-primary mt-2 w-100">Refresh Status</button>
+    </div>
+  </div>
+
+  <!-- JavaScript Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Application JavaScript -->
+  <script src="js/security-tests.js"></script>
+</body>
+</html>
