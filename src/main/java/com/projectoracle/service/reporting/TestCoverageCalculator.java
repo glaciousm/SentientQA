@@ -4,6 +4,7 @@ import com.projectoracle.model.TestCase;
 import com.projectoracle.repository.TestCaseRepository;
 import com.projectoracle.service.CodeAnalysisService;
 import com.projectoracle.service.MethodInfo;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -170,6 +171,7 @@ public class TestCoverageCalculator {
     /**
      * Coverage report class
      */
+    @Data
     public static class CoverageReport {
         private String sourceDirectory;
         private int totalMethods;
@@ -178,63 +180,6 @@ public class TestCoverageCalculator {
         private int totalTests;
         private List<PackageCoverage> packageCoverage;
         private String error;
-
-        // Getters and setters
-        public String getSourceDirectory() {
-            return sourceDirectory;
-        }
-
-        public void setSourceDirectory(String sourceDirectory) {
-            this.sourceDirectory = sourceDirectory;
-        }
-
-        public int getTotalMethods() {
-            return totalMethods;
-        }
-
-        public void setTotalMethods(int totalMethods) {
-            this.totalMethods = totalMethods;
-        }
-
-        public int getCoveredMethods() {
-            return coveredMethods;
-        }
-
-        public void setCoveredMethods(int coveredMethods) {
-            this.coveredMethods = coveredMethods;
-        }
-
-        public double getCoveragePercentage() {
-            return coveragePercentage;
-        }
-
-        public void setCoveragePercentage(double coveragePercentage) {
-            this.coveragePercentage = coveragePercentage;
-        }
-
-        public int getTotalTests() {
-            return totalTests;
-        }
-
-        public void setTotalTests(int totalTests) {
-            this.totalTests = totalTests;
-        }
-
-        public List<PackageCoverage> getPackageCoverage() {
-            return packageCoverage;
-        }
-
-        public void setPackageCoverage(List<PackageCoverage> packageCoverage) {
-            this.packageCoverage = packageCoverage;
-        }
-
-        public String getError() {
-            return error;
-        }
-
-        public void setError(String error) {
-            this.error = error;
-        }
     }
 
     /**

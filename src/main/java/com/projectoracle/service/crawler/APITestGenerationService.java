@@ -1,5 +1,6 @@
 package com.projectoracle.service.crawler;
 
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,7 @@ public class APITestGenerationService {
     /**
      * Represents a detected API endpoint
      */
+    @Data
     public static class APIEndpoint {
         private String url;
         private String method;
@@ -49,63 +51,6 @@ public class APITestGenerationService {
         public APIEndpoint() {
             parameters = new HashMap<>();
             headers = new HashMap<>();
-        }
-
-        // Getters and setters
-        public String getUrl() {
-            return url;
-        }
-
-        public void setUrl(String url) {
-            this.url = url;
-        }
-
-        public String getMethod() {
-            return method;
-        }
-
-        public void setMethod(String method) {
-            this.method = method;
-        }
-
-        public Map<String, String> getParameters() {
-            return parameters;
-        }
-
-        public void setParameters(Map<String, String> parameters) {
-            this.parameters = parameters;
-        }
-
-        public Map<String, String> getHeaders() {
-            return headers;
-        }
-
-        public void setHeaders(Map<String, String> headers) {
-            this.headers = headers;
-        }
-
-        public String getRequestBody() {
-            return requestBody;
-        }
-
-        public void setRequestBody(String requestBody) {
-            this.requestBody = requestBody;
-        }
-
-        public String getResponseExample() {
-            return responseExample;
-        }
-
-        public void setResponseExample(String responseExample) {
-            this.responseExample = responseExample;
-        }
-
-        public int getStatusCode() {
-            return statusCode;
-        }
-
-        public void setStatusCode(int statusCode) {
-            this.statusCode = statusCode;
         }
     }
 

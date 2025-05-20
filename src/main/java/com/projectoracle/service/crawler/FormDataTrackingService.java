@@ -1,5 +1,6 @@
 package com.projectoracle.service.crawler;
 
+import lombok.Data;
 import org.openqa.selenium.remote.RemoteWebElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +50,7 @@ public class FormDataTrackingService {
     /**
      * Represents the analysis of a form including its fields and validation rules
      */
+    @Data
     public static class FormAnalysis {
         private String formId;
         private String formUrl;
@@ -61,97 +63,16 @@ public class FormDataTrackingService {
         private boolean hasFileUpload;
         private Map<String, String> detectedPatterns = new HashMap<>();
 
-        // Getters and Setters
-        public String getFormId() {
-            return formId;
-        }
-
-        public void setFormId(String formId) {
-            this.formId = formId;
-        }
-
-        public String getFormUrl() {
-            return formUrl;
-        }
-
-        public void setFormUrl(String formUrl) {
-            this.formUrl = formUrl;
-        }
-
-        public String getFormName() {
-            return formName;
-        }
-
-        public void setFormName(String formName) {
-            this.formName = formName;
-        }
-
-        public List<FormField> getFields() {
-            return fields;
-        }
-
-        public void setFields(List<FormField> fields) {
-            this.fields = fields;
-        }
-
         public void addField(FormField field) {
             this.fields.add(field);
-        }
-
-        public List<ValidationRule> getValidationRules() {
-            return validationRules;
-        }
-
-        public void setValidationRules(List<ValidationRule> validationRules) {
-            this.validationRules = validationRules;
         }
 
         public void addValidationRule(ValidationRule rule) {
             this.validationRules.add(rule);
         }
 
-        public List<DataTransformation> getDataTransformations() {
-            return dataTransformations;
-        }
-
-        public void setDataTransformations(List<DataTransformation> dataTransformations) {
-            this.dataTransformations = dataTransformations;
-        }
-
         public void addDataTransformation(DataTransformation transformation) {
             this.dataTransformations.add(transformation);
-        }
-
-        public String getSubmitAction() {
-            return submitAction;
-        }
-
-        public void setSubmitAction(String submitAction) {
-            this.submitAction = submitAction;
-        }
-
-        public boolean isMultiStep() {
-            return isMultiStep;
-        }
-
-        public void setMultiStep(boolean multiStep) {
-            isMultiStep = multiStep;
-        }
-
-        public boolean isHasFileUpload() {
-            return hasFileUpload;
-        }
-
-        public void setHasFileUpload(boolean hasFileUpload) {
-            this.hasFileUpload = hasFileUpload;
-        }
-
-        public Map<String, String> getDetectedPatterns() {
-            return detectedPatterns;
-        }
-
-        public void setDetectedPatterns(Map<String, String> detectedPatterns) {
-            this.detectedPatterns = detectedPatterns;
         }
 
         public void addDetectedPattern(String fieldName, String pattern) {
@@ -162,6 +83,7 @@ public class FormDataTrackingService {
     /**
      * Represents a form field with its properties and validation rules
      */
+    @Data
     public static class FormField {
         private String name;
         private String id;
@@ -176,113 +98,16 @@ public class FormDataTrackingService {
         private String validationPattern;
         private String errorMessage;
 
-        // Getters and Setters
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public void setId(String id) {
-            this.id = id;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getLabel() {
-            return label;
-        }
-
-        public void setLabel(String label) {
-            this.label = label;
-        }
-
-        public boolean isRequired() {
-            return required;
-        }
-
-        public void setRequired(boolean required) {
-            this.required = required;
-        }
-
-        public String getDefaultValue() {
-            return defaultValue;
-        }
-
-        public void setDefaultValue(String defaultValue) {
-            this.defaultValue = defaultValue;
-        }
-
-        public List<String> getOptions() {
-            return options;
-        }
-
-        public void setOptions(List<String> options) {
-            this.options = options;
-        }
-
         public void addOption(String option) {
             this.options.add(option);
-        }
-
-        public Map<String, String> getAttributes() {
-            return attributes;
-        }
-
-        public void setAttributes(Map<String, String> attributes) {
-            this.attributes = attributes;
         }
 
         public void addAttribute(String name, String value) {
             this.attributes.put(name, value);
         }
 
-        public String getElementLocator() {
-            return elementLocator;
-        }
-
-        public void setElementLocator(String elementLocator) {
-            this.elementLocator = elementLocator;
-        }
-
-        public List<String> getDependentFields() {
-            return dependentFields;
-        }
-
-        public void setDependentFields(List<String> dependentFields) {
-            this.dependentFields = dependentFields;
-        }
-
         public void addDependentField(String fieldName) {
             this.dependentFields.add(fieldName);
-        }
-
-        public String getValidationPattern() {
-            return validationPattern;
-        }
-
-        public void setValidationPattern(String validationPattern) {
-            this.validationPattern = validationPattern;
-        }
-
-        public String getErrorMessage() {
-            return errorMessage;
-        }
-
-        public void setErrorMessage(String errorMessage) {
-            this.errorMessage = errorMessage;
         }
 
         /**
@@ -363,6 +188,7 @@ public class FormDataTrackingService {
     /**
      * Represents a validation rule for a form field
      */
+    @Data
     public static class ValidationRule {
         private String fieldName;
         private String ruleType;
@@ -371,57 +197,8 @@ public class FormDataTrackingService {
         private List<String> dependentFields = new ArrayList<>();
         private Map<String, String> parameters = new HashMap<>();
 
-        // Getters and Setters
-        public String getFieldName() {
-            return fieldName;
-        }
-
-        public void setFieldName(String fieldName) {
-            this.fieldName = fieldName;
-        }
-
-        public String getRuleType() {
-            return ruleType;
-        }
-
-        public void setRuleType(String ruleType) {
-            this.ruleType = ruleType;
-        }
-
-        public String getPattern() {
-            return pattern;
-        }
-
-        public void setPattern(String pattern) {
-            this.pattern = pattern;
-        }
-
-        public String getErrorMessage() {
-            return errorMessage;
-        }
-
-        public void setErrorMessage(String errorMessage) {
-            this.errorMessage = errorMessage;
-        }
-
-        public List<String> getDependentFields() {
-            return dependentFields;
-        }
-
-        public void setDependentFields(List<String> dependentFields) {
-            this.dependentFields = dependentFields;
-        }
-
         public void addDependentField(String fieldName) {
             this.dependentFields.add(fieldName);
-        }
-
-        public Map<String, String> getParameters() {
-            return parameters;
-        }
-
-        public void setParameters(Map<String, String> parameters) {
-            this.parameters = parameters;
         }
 
         public void addParameter(String name, String value) {
@@ -432,6 +209,7 @@ public class FormDataTrackingService {
     /**
      * Represents a data transformation between forms or pages
      */
+    @Data
     public static class DataTransformation {
         private String sourceField;
         private String targetField;
@@ -439,55 +217,6 @@ public class FormDataTrackingService {
         private String transformationRule;
         private String sourceValue;
         private String targetValue;
-
-        // Getters and Setters
-        public String getSourceField() {
-            return sourceField;
-        }
-
-        public void setSourceField(String sourceField) {
-            this.sourceField = sourceField;
-        }
-
-        public String getTargetField() {
-            return targetField;
-        }
-
-        public void setTargetField(String targetField) {
-            this.targetField = targetField;
-        }
-
-        public String getTransformationType() {
-            return transformationType;
-        }
-
-        public void setTransformationType(String transformationType) {
-            this.transformationType = transformationType;
-        }
-
-        public String getTransformationRule() {
-            return transformationRule;
-        }
-
-        public void setTransformationRule(String transformationRule) {
-            this.transformationRule = transformationRule;
-        }
-
-        public String getSourceValue() {
-            return sourceValue;
-        }
-
-        public void setSourceValue(String sourceValue) {
-            this.sourceValue = sourceValue;
-        }
-
-        public String getTargetValue() {
-            return targetValue;
-        }
-
-        public void setTargetValue(String targetValue) {
-            this.targetValue = targetValue;
-        }
     }
 
     /**

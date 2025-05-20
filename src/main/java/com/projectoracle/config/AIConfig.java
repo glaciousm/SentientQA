@@ -1,5 +1,6 @@
 package com.projectoracle.config;
 
+import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
@@ -13,6 +14,7 @@ import java.nio.file.Paths;
  */
 @Configuration
 @PropertySource("classpath:ai-config.properties")
+@Data
 public class AIConfig {
 
     // Base directory for all AI models and resources
