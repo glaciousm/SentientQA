@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<suppressions>
+    <!-- Suppress checks for test files -->
+    <suppress files=".*[/\\]src[/\\]test[/\\].*" checks=".*"/>
+    
+    <!-- Suppress Javadoc requirements for internal/private/non-API packages -->
+    <suppress files=".*[/\\]internal[/\\].*" checks="JavadocMethod|JavadocType|JavadocVariable|JavadocStyle"/>
+    
+    <!-- Suppress line length for specific files -->
+    <suppress files=".*Constants\.java" checks="LineLength"/>
+    
+    <!-- Suppress checks for model/DTO classes (using Lombok) -->
+    <suppress files=".*[/\\]model[/\\].*" checks="VisibilityModifier|HiddenField"/>
+    
+    <!-- Suppress checks for configuration classes -->
+    <suppress files=".*[/\\]config[/\\].*" checks="VisibilityModifier|HiddenField"/>
+    
+    <!-- Suppress specific checks for specific file patterns -->
+    <suppress files=".*[/\\]repository[/\\].*Repository\.java" checks="DesignForExtension"/>
+    <suppress files=".*[/\\]service[/\\].*Service\.java" checks="DesignForExtension"/>
+</suppressions>

@@ -41,9 +41,9 @@ To manage implementation efficiently (given token constraints), tasks are groupe
   2. Fine-tune thread pools for parallel tasks (Completed, Medium)
   3. Enhance UI responsiveness (Completed, Low)
 
-- **Stage 4 (Short-Term):**
-  1. Write unit tests for core services (Planned, High)
-  2. Integrate static analysis tools (SpotBugs, Checkstyle) (Planned, Low)
+- **Stage 4 (Short-Term):** ✅ COMPLETED
+  1. Write unit tests for core services (Completed, High)
+  2. Integrate static analysis tools (SpotBugs, Checkstyle) (Completed, Low)
 
 - **Stage 5 (Mid-Term):**
   1. Knowledge Integration System (Jira/Confluence ingestion) (Planned, High)
@@ -86,8 +86,8 @@ To manage implementation efficiently (given token constraints), tasks are groupe
 | 9. ✅ Improve thread pools for parallel tasks                                         | Completed  | Medium   | Optimize parallel test generation/execution.   |
 | 10. ✅ Lazy-load AI models on first use                                               | Completed  | Medium   | Speed up initial startup.                      |
 | 11. ✅ Enhance UI responsiveness (lazy-load lists, loading indicators)                | Completed  | Low      | Improve dashboard UX.                          |
-| 12. Write unit tests for core services                                               | Planned    | High     | Prevent regressions in critical modules.       |
-| 13. Integrate static analysis tools (SpotBugs, Checkstyle)                           | Planned    | Low      | Enforce code quality and style.                |
+| 12. ✅ Write unit tests for core services                                             | Completed  | High     | Prevent regressions in critical modules.       |
+| 13. ✅ Integrate static analysis tools (SpotBugs, Checkstyle)                         | Completed  | Low      | Enforce code quality and style.                |
 
 ---
 

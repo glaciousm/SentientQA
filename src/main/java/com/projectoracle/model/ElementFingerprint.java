@@ -236,10 +236,11 @@ public class ElementFingerprint {
         double similaritySum = 0.0;
         int propertyCount = 0;
 
-        // Check properties in both maps
-        for (String key : props1.keySet()) {
+        // Check properties in both maps - using entrySet for efficiency
+        for (Map.Entry<String, Double> entry : props1.entrySet()) {
+            String key = entry.getKey();
             if (props2.containsKey(key)) {
-                double value1 = props1.get(key);
+                double value1 = entry.getValue();
                 double value2 = props2.get(key);
 
                 // Calculate relative difference

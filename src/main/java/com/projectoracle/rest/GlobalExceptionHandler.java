@@ -89,11 +89,20 @@ public class GlobalExceptionHandler {
             MethodArgumentTypeMismatchException ex, WebRequest request) {
         logger.error("Type mismatch: {}", ex.getMessage(), ex);
         
-        String error = String.format(
-                "Parameter '%s' should be of type %s",
-                ex.getName(),
-                ex.getRequiredType().getSimpleName()
-        );
+        String error;
+        // Check if required type is available, to avoid null pointer
+        if (ex.getRequiredType() != null) {
+            error = String.format(
+                    "Parameter '%s' should be of type %s",
+                    ex.getName(),
+                    ex.getRequiredType().getSimpleName()
+            );
+        } else {
+            error = String.format(
+                    "Parameter '%s' has an invalid type",
+                    ex.getName()
+            );
+        }
         
         ErrorResponse errorResponse = new ErrorResponse(
                 new Date(),

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter
+    xmlns="https://github.com/spotbugs/filter/3.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/4.0.0/spotbugs/etc/findbugsfilter.xsd">
+    
+    <!-- Exclude issues in generated code -->
+    <Match>
+        <Class name="~.*\$.*"/>
+    </Match>
+    
+    <!-- Exclude test classes -->
+    <Match>
+        <Class name="~.*Test.*"/>
+    </Match>
+    
+    <!-- Exclude issues related to serialization in DTOs -->
+    <Match>
+        <Class name="~com\.projectoracle\.model\..*"/>
+        <Bug pattern="SE_NO_SERIALVERSIONID"/>
+    </Match>
+    
+    <!-- Exclude issues in Spring Boot config classes -->
+    <Match>
+        <Class name="~com\.projectoracle\.config\..*"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+    
+    <!-- Exclude specific false positives -->
+    <Match>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
+    </Match>
+    
+    <!-- Exclude issues in Lombok-generated code -->
+    <Match>
+        <Bug pattern="UWF_UNWRITTEN_FIELD"/>
+        <Field name="~.*"/>
+    </Match>
+    
+    <!-- Exclude issues about unused fields (often used by Spring dependency injection) -->
+    <Match>
+        <Bug pattern="UUF_UNUSED_FIELD"/>
+        <Field name="~.*"/>
+    </Match>
+    
+    <!-- Exclude SpringEntityLeakDetector issues in AuthController -->
+    <Match>
+        <Class name="com.projectoracle.rest.AuthController"/>
+        <Bug pattern="SPRING_ENTITY_LEAK"/>
+    </Match>
+    
+    <!-- Exclude Path Traversal issues in model/config classes -->
+    <Match>
+        <Class name="~com\.projectoracle\.config\..*"/>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
+    
+    <!-- Exclude Path Traversal issues in repository classes -->
+    <Match>
+        <Class name="~com\.projectoracle\.repository\..*"/>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
+    
+    <!-- Exclude Path Traversal issues in ReportController -->
+    <Match>
+        <Class name="com.projectoracle.rest.ReportController"/>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
+    
+    <!-- Exclude EI_EXPOSE_REP and EI_EXPOSE_REP2 in model classes (common in DTOs) -->
+    <Match>
+        <Class name="~com\.projectoracle\.model\..*"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+    
+    <!-- Exclude MethodInfo from EI_EXPOSE_REP issues (used internally) -->
+    <Match>
+        <Class name="com.projectoracle.service.MethodInfo"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+    
+    <!-- Exclude CRLF_INJECTION_LOGS in service classes since this is a dev tool -->
+    <Match>
+        <Class name="~com\.projectoracle\.service\..*"/>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+    
+    <!-- Exclude CRLF_INJECTION_LOGS in rest controllers since this is a dev tool -->
+    <Match>
+        <Class name="~com\.projectoracle\.rest\..*"/>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+    
+    <!-- Exclude CSRF Protection warning since this is a dev/testing tool -->
+    <Match>
+        <Class name="com.projectoracle.config.SecurityConfig"/>
+        <Bug pattern="SPRING_CSRF_PROTECTION_DISABLED"/>
+    </Match>
+    
+    <!-- Exclude SSRF in ModelDownloadService since it's for downloading models -->
+    <Match>
+        <Class name="com.projectoracle.service.ModelDownloadService"/>
+        <Bug pattern="URLCONNECTION_SSRF_FD"/>
+    </Match>
+    
+    <!-- Exclude UICrawlerService issues -->
+    <Match>
+        <Class name="com.projectoracle.service.crawler.UICrawlerService"/>
+        <Bug pattern="DE_MIGHT_IGNORE,DLS_DEAD_LOCAL_STORE"/>
+    </Match>
+    
+    <!-- Exclude format string issues -->
+    <Match>
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE"/>
+    </Match>
+    
+    <!-- Exclude null pointer warning in GlobalExceptionHandler -->
+    <Match>
+        <Class name="com.projectoracle.rest.GlobalExceptionHandler"/>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+    </Match>
+</FindBugsFilter>

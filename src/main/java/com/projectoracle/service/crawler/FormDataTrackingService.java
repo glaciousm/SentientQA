@@ -674,6 +674,17 @@ public class FormDataTrackingService {
                 passwordRule.setErrorMessage("Password must be at least 8 characters long");
                 analysis.addValidationRule(passwordRule);
                 break;
+                
+            default:
+                // For all other field types, add a simple validation rule if needed
+                if (field.getAttributes().containsKey("pattern") || field.getValidationPattern() != null) {
+                    ValidationRule defaultRule = new ValidationRule();
+                    defaultRule.setFieldName(field.getName());
+                    defaultRule.setRuleType("text");
+                    defaultRule.setErrorMessage("Please enter valid input");
+                    analysis.addValidationRule(defaultRule);
+                }
+                break;
         }
     }
 

@@ -489,6 +489,10 @@ public class StateManagementAnalysisService {
                                 // Field might not exist on this page
                             }
                             break;
+                        default:
+                            // For unknown storage types, log and continue
+                            logger.warn("Unknown storage type: {}", variable.getStorageType());
+                            break;
                     }
 
                     // If value was found, update the variable
