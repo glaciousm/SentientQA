@@ -51,9 +51,9 @@ To manage implementation efficiently (given token constraints), tasks are groupe
   2. Jira/Confluence ingestion for knowledge integration (Completed, Medium)
   3. NLP query interface for tests (Completed, Medium)
 
-- **Stage 6 (Mid-Term):**
-  1. Expand self-healing features (Planned, High)
-  2. Implement test prioritization (Planned, Medium)
+- **Stage 6 (Mid-Term):** ✅ COMPLETED
+  1. Expand self-healing features (Completed, High)
+  2. Implement test prioritization (Completed, Medium)
 
 - **Stage 7 (Mid-Term):**
   1. Quality Intelligence Dashboard (Planned, Medium)
@@ -103,8 +103,8 @@ To manage implementation efficiently (given token constraints), tasks are groupe
 | 1. Knowledge Integration System (API docs, project docs, code comments, test history)        | Completed | High     | External knowledge enrichment for test generation. |
 | 2. Jira/Confluence ingestion for knowledge integration                                       | Completed | Medium   | Link tests to requirements for traceability.       |
 | 3. NLP query interface for tests (e.g., "Generate tests for invalid login")                  | Completed | Medium   | Natural language to test generation.               |
-| 4. Expand self-healing (AI-driven fixes & re-test)                                           | Planned   | High     | Automate test repair and validation.               |
-| 5. Implement test prioritization (historical data & coverage heuristics)                     | Planned   | Medium   | Run high-risk tests first in CI pipelines.         |
+| 4. Expand self-healing (AI-driven fixes & re-test)                                           | Completed | High     | Automate test repair and validation.               |
+| 5. Implement test prioritization (historical data & coverage heuristics)                     | Completed | Medium   | Run high-risk tests first in CI pipelines.         |
 | 6. Quality Intelligence Dashboard (failure trends, flakiness metrics)                        | Planned   | Medium   | Provide analytics and insights.                    |
 | 7. Support performance & security test generation                                            | Planned   | Low      | Generate JMH benchmarks and security tests.        |
 | 8. CI/CD integration (Docker, Jenkins, GitHub Actions plugins)                               | Planned   | High     | Seamless enterprise pipeline compatibility.        |

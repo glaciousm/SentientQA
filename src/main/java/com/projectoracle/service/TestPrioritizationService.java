@@ -2,6 +2,8 @@ package com.projectoracle.service;
 
 import com.projectoracle.model.TestCase;
 import com.projectoracle.model.TestSuggestion;
+import com.projectoracle.model.TestExecutionHistory;
+import com.projectoracle.model.TestPriorityConfig;
 import com.projectoracle.repository.TestCaseRepository;
 import com.projectoracle.repository.TestSuggestionRepository;
 import lombok.Data;
@@ -9,6 +11,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,6 +29,12 @@ public class TestPrioritizationService {
 
     private final TestSuggestionRepository suggestionRepository;
     private final TestCaseRepository testCaseRepository;
+    
+    // Repository for test execution history (mock declaration - would be autowired in real impl)
+    private Map<UUID, TestExecutionHistory> testExecutionHistoryRepo = new HashMap<>();
+    
+    // Default configuration
+    private TestPriorityConfig config = TestPriorityConfig.getDefaults();
 
     /**
      * Prioritize test suggestions for a class
@@ -290,5 +302,465 @@ public class TestPrioritizationService {
         private Map<String, Integer> categoryCounts;
         private int untestedMethodCount;
         private int highPrioritySuggestionCount;
+    }
+    
+    /**
+     * Set prioritization configuration
+     * 
+     * @param config The prioritization configuration
+     */
+    public void setConfig(TestPriorityConfig config) {
+        this.config = config;
+    }
+    
+    /**
+     * Get current prioritization configuration
+     * 
+     * @return The current configuration
+     */
+    public TestPriorityConfig getConfig() {
+        return config;
+    }
+    
+    /**
+     * Prioritize tests for execution
+     * 
+     * @param testCases The test cases to prioritize
+     * @param changedFiles List of files that have changed since last execution
+     * @return Prioritized list of test cases
+     */
+    public List<TestCase> prioritizeTestExecution(List<TestCase> testCases, List<String> changedFiles) {
+        if (!config.isEnabled() || testCases == null || testCases.isEmpty()) {
+            return testCases; // No prioritization
+        }
+        
+        log.info("Prioritizing {} tests for execution", testCases.size());
+        
+        // Calculate priority scores for each test
+        Map<UUID, Integer> priorityScores = calculateExecutionPriorityScores(testCases, changedFiles);
+        
+        // Sort tests by priority score (descending)
+        List<TestCase> prioritizedTests = new ArrayList<>(testCases);
+        prioritizedTests.sort((t1, t2) -> {
+            Integer score1 = priorityScores.getOrDefault(t1.getId(), 0);
+            Integer score2 = priorityScores.getOrDefault(t2.getId(), 0);
+            return score2.compareTo(score1); // Descending order
+        });
+        
+        // Apply fast-track for high-priority tests
+        if (config.getMaxFastTrackTests() > 0 && prioritizedTests.size() > config.getMaxFastTrackTests()) {
+            // Move top N tests to the front for fast-track execution
+            int fastTrackCount = Math.min(config.getMaxFastTrackTests(), prioritizedTests.size());
+            List<TestCase> fastTrackTests = prioritizedTests.subList(0, fastTrackCount);
+            
+            log.info("Fast-tracking {} high-priority tests", fastTrackCount);
+            
+            // Log the fast-tracked tests for visibility
+            for (int i = 0; i < fastTrackTests.size(); i++) {
+                TestCase test = fastTrackTests.get(i);
+                Integer score = priorityScores.getOrDefault(test.getId(), 0);
+                log.debug("Fast-track {}: {} (score: {})", i + 1, test.getName(), score);
+            }
+        }
+        
+        return prioritizedTests;
+    }
+    
+    /**
+     * Calculate priority scores for test execution
+     * 
+     * @param testCases The test cases to score
+     * @param changedFiles List of files that have changed
+     * @return Map of test ID to priority score
+     */
+    private Map<UUID, Integer> calculateExecutionPriorityScores(List<TestCase> testCases, List<String> changedFiles) {
+        Map<UUID, Integer> scores = new HashMap<>();
+        
+        // Set of recently changed files (normalized paths)
+        Set<String> changedFileSet = changedFiles != null ? 
+                                    changedFiles.stream()
+                                               .map(this::normalizePath)
+                                               .collect(Collectors.toSet()) : 
+                                    new HashSet<>();
+        
+        // Calculate scores for each test
+        for (TestCase testCase : testCases) {
+            int score = 0;
+            
+            // Get execution history
+            TestExecutionHistory history = testExecutionHistoryRepo.get(testCase.getId());
+            
+            // Check if this is a new test
+            boolean isNewTest = history == null || history.getTotalExecutions() == 0;
+            
+            // Calculate correlation with changed files
+            double changeCorrelation = calculateChangeCorrelation(testCase, history, changedFileSet);
+            
+            // Calculate code coverage (mock implementation)
+            double coverageScore = 0.5; // Default medium coverage
+            
+            // Calculate complexity (mock implementation)
+            double complexity = calculateTestComplexity(testCase);
+            
+            // Calculate final score using the configuration
+            score = config.calculatePriorityScore(
+                history, 
+                isNewTest, 
+                changeCorrelation, 
+                coverageScore, 
+                complexity, 
+                testHasDependencies(testCase)
+            );
+            
+            scores.put(testCase.getId(), score);
+            
+            // Update the priority score in history if available
+            if (history != null) {
+                history.setPriorityScore(score);
+                testExecutionHistoryRepo.put(testCase.getId(), history);
+            }
+        }
+        
+        return scores;
+    }
+    
+    /**
+     * Calculate correlation between a test and changed files
+     * 
+     * @param testCase The test case
+     * @param history Test execution history
+     * @param changedFiles Set of changed files
+     * @return Correlation score (0-1)
+     */
+    private double calculateChangeCorrelation(TestCase testCase, TestExecutionHistory history, Set<String> changedFiles) {
+        if (changedFiles.isEmpty()) {
+            return 0.0; // No changes
+        }
+        
+        // If we have history with code change correlations, use it
+        if (history != null && history.getCodeChangeCorrelations() != null) {
+            Map<String, Integer> correlations = history.getCodeChangeCorrelations();
+            
+            int matchingChanges = 0;
+            for (String file : changedFiles) {
+                if (correlations.containsKey(file)) {
+                    matchingChanges += correlations.get(file);
+                }
+            }
+            
+            // Calculate correlation score based on matches
+            if (matchingChanges > 0) {
+                return Math.min(1.0, matchingChanges / 5.0); // Max out at 1.0
+            }
+        }
+        
+        // If no history, use a simpler heuristic
+        String testClassName = testCase.getClassName();
+        String testMethodName = testCase.getMethodName();
+        
+        // Check if any changed files might be related to this test
+        for (String file : changedFiles) {
+            // Extract class name from file path
+            String fileName = Path.of(file).getFileName().toString();
+            if (fileName.endsWith(".java")) {
+                String className = fileName.substring(0, fileName.length() - 5);
+                
+                // Check for direct class name match (without "Test" suffix)
+                if (testClassName.equals(className) || testClassName.equals(className + "Test")) {
+                    return 0.9; // High correlation
+                }
+                
+                // Check if method name might be related
+                if (testMethodName != null) {
+                    String normalizedMethodName = testMethodName.toLowerCase();
+                    if (normalizedMethodName.startsWith("test")) {
+                        normalizedMethodName = normalizedMethodName.substring(4);
+                    }
+                    
+                    if (className.toLowerCase().contains(normalizedMethodName) || 
+                        normalizedMethodName.contains(className.toLowerCase())) {
+                        return 0.7; // Medium correlation
+                    }
+                }
+                
+                // Check for classes in the same package
+                if (testCase.getPackageName() != null && file.contains(testCase.getPackageName().replace(".", "/"))) {
+                    return 0.5; // Some correlation
+                }
+            }
+        }
+        
+        return 0.1; // Low default correlation
+    }
+    
+    /**
+     * Check if a test has dependencies on other tests
+     * 
+     * @param testCase The test case to check
+     * @return True if test has dependencies
+     */
+    private boolean testHasDependencies(TestCase testCase) {
+        // Check explicit dependencies
+        if (testCase.getDependencies() != null && !testCase.getDependencies().isEmpty()) {
+            return true;
+        }
+        
+        // Check for dependency annotations in code
+        if (testCase.getSourceCode() != null) {
+            if (testCase.getSourceCode().contains("@DependsOn") || 
+                testCase.getSourceCode().contains("@Order(") ||
+                testCase.getSourceCode().contains("@TestMethodOrder")) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Calculate test complexity based on code structure
+     * 
+     * @param testCase The test case
+     * @return Complexity score (0-1)
+     */
+    private double calculateTestComplexity(TestCase testCase) {
+        if (testCase.getSourceCode() == null) {
+            return 0.5; // Default medium complexity
+        }
+        
+        // Count decision points, loops, etc. as indicators of complexity
+        String sourceCode = testCase.getSourceCode();
+        
+        int decisionPoints = countOccurrences(sourceCode, "if (") + 
+                            countOccurrences(sourceCode, "else ") + 
+                            countOccurrences(sourceCode, "switch(") + 
+                            countOccurrences(sourceCode, "case ") * 2;
+                            
+        int loops = countOccurrences(sourceCode, "for (") + 
+                   countOccurrences(sourceCode, "while (") + 
+                   countOccurrences(sourceCode, "do {") * 2;
+                   
+        int assertions = countOccurrences(sourceCode, "assert") + 
+                        countOccurrences(sourceCode, "assertEquals") + 
+                        countOccurrences(sourceCode, "assertTrue") + 
+                        countOccurrences(sourceCode, "assertFalse");
+                        
+        int exceptionHandling = countOccurrences(sourceCode, "try {") * 3 + 
+                              countOccurrences(sourceCode, "catch (") * 2 + 
+                              countOccurrences(sourceCode, "throws ") + 
+                              countOccurrences(sourceCode, "@Test(expected = ");
+        
+        // Calculate complexity score (0-1 scale)
+        int totalComplexity = decisionPoints + loops + assertions / 2 + exceptionHandling;
+        
+        return Math.min(1.0, totalComplexity / 20.0); // Normalize to 0-1 range
+    }
+    
+    /**
+     * Normalize file path for consistent comparison
+     * 
+     * @param path The file path to normalize
+     * @return Normalized path
+     */
+    private String normalizePath(String path) {
+        if (path == null) {
+            return "";
+        }
+        
+        // Simplify by just converting to lowercase and normalizing slashes
+        return path.toLowerCase().replace('\\', '/');
+    }
+    
+    /**
+     * Update test execution history after test runs
+     * 
+     * @param testCase The executed test case
+     * @param successful Whether the test passed
+     * @param executionTimeMs Execution time in milliseconds
+     * @param errorMessage Error message if test failed
+     * @param stackTrace Stack trace if test failed
+     * @param codeVersion Code version identifier (e.g., git commit)
+     * @param changedFiles Files changed since last execution
+     */
+    public void recordTestExecution(TestCase testCase, boolean successful,
+                                  long executionTimeMs, String errorMessage,
+                                  String stackTrace, String codeVersion,
+                                  List<String> changedFiles) {
+        
+        if (testCase == null || testCase.getId() == null) {
+            return;
+        }
+        
+        UUID testId = testCase.getId();
+        TestExecutionHistory history = testExecutionHistoryRepo.get(testId);
+        
+        if (history == null) {
+            // Create new history
+            history = new TestExecutionHistory();
+            history.setTestId(testId);
+            history.setTestName(testCase.getName());
+            history.setFirstExecuted(LocalDateTime.now());
+            history.setLastExecuted(LocalDateTime.now());
+            history.setTotalExecutions(0);
+            history.setPassedExecutions(0);
+            history.setFailedExecutions(0);
+            history.setAverageExecutionTime(0);
+            history.setPassRate(0);
+            history.setRecentExecutions(new ArrayList<>());
+        }
+        
+        // Create execution record
+        TestExecutionHistory.TestExecution execution = new TestExecutionHistory.TestExecution();
+        execution.setId(UUID.randomUUID());
+        execution.setExecutedAt(LocalDateTime.now());
+        execution.setSuccessful(successful);
+        execution.setExecutionTimeMs(executionTimeMs);
+        execution.setErrorMessage(errorMessage);
+        execution.setStackTrace(stackTrace);
+        execution.setCodeVersion(codeVersion);
+        execution.setEnvironment(new HashMap<>());
+        execution.setChangedFiles(changedFiles);
+        
+        // Add to history
+        history.addExecution(execution);
+        
+        // Save history
+        testExecutionHistoryRepo.put(testId, history);
+    }
+    
+    /**
+     * Get prioritized test execution order based on dependency graph
+     * and priority scores
+     * 
+     * @param testCases All test cases
+     * @return Ordered list of test cases respecting dependencies
+     */
+    public List<TestCase> getOrderedExecutionPlan(List<TestCase> testCases) {
+        if (testCases == null || testCases.isEmpty()) {
+            return List.of();
+        }
+        
+        // Build dependency graph
+        Map<UUID, Set<UUID>> dependencyGraph = buildDependencyGraph(testCases);
+        
+        // Calculate priority scores
+        Map<UUID, Integer> priorityScores = calculateExecutionPriorityScores(testCases, List.of());
+        
+        // Find roots (tests with no dependencies)
+        List<TestCase> roots = testCases.stream()
+                                       .filter(t -> !dependencyGraph.containsKey(t.getId()) || 
+                                                  dependencyGraph.get(t.getId()).isEmpty())
+                                       .collect(Collectors.toList());
+        
+        // Sort roots by priority
+        roots.sort((t1, t2) -> {
+            Integer score1 = priorityScores.getOrDefault(t1.getId(), 0);
+            Integer score2 = priorityScores.getOrDefault(t2.getId(), 0);
+            return score2.compareTo(score1); // Descending
+        });
+        
+        // Topological sort with priority
+        List<TestCase> result = new ArrayList<>();
+        Set<UUID> visited = new HashSet<>();
+        
+        for (TestCase root : roots) {
+            visit(root, dependencyGraph, visited, result, testCases, priorityScores);
+        }
+        
+        // Add any remaining tests (in case of cycles)
+        for (TestCase test : testCases) {
+            if (!visited.contains(test.getId())) {
+                visit(test, dependencyGraph, visited, result, testCases, priorityScores);
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Build dependency graph from test cases
+     * 
+     * @param testCases The test cases
+     * @return Map of test ID to set of dependency IDs
+     */
+    private Map<UUID, Set<UUID>> buildDependencyGraph(List<TestCase> testCases) {
+        Map<UUID, Set<UUID>> graph = new HashMap<>();
+        Map<String, TestCase> testsByName = new HashMap<>();
+        
+        // Index tests by name for dependency lookup
+        for (TestCase test : testCases) {
+            testsByName.put(test.getName(), test);
+            testsByName.put(test.getClassName() + "." + test.getMethodName(), test);
+        }
+        
+        // Build graph from explicit dependencies
+        for (TestCase test : testCases) {
+            if (test.getDependencies() != null && !test.getDependencies().isEmpty()) {
+                Set<UUID> deps = new HashSet<>();
+                
+                for (String dep : test.getDependencies()) {
+                    // Look up dependency by name
+                    TestCase depTest = testsByName.get(dep);
+                    if (depTest != null) {
+                        deps.add(depTest.getId());
+                    }
+                }
+                
+                if (!deps.isEmpty()) {
+                    graph.put(test.getId(), deps);
+                }
+            }
+        }
+        
+        return graph;
+    }
+    
+    /**
+     * Visit node in topological sort
+     * 
+     * @param test Current test
+     * @param graph Dependency graph
+     * @param visited Set of visited tests
+     * @param result Result list
+     * @param testCases All test cases
+     * @param priorityScores Priority scores
+     */
+    private void visit(TestCase test, Map<UUID, Set<UUID>> graph, Set<UUID> visited,
+                      List<TestCase> result, List<TestCase> testCases, Map<UUID, Integer> priorityScores) {
+        
+        if (visited.contains(test.getId())) {
+            return;
+        }
+        
+        visited.add(test.getId());
+        
+        // Visit dependencies first
+        if (graph.containsKey(test.getId())) {
+            // Get all dependencies
+            List<TestCase> deps = new ArrayList<>();
+            for (UUID depId : graph.get(test.getId())) {
+                for (TestCase depTest : testCases) {
+                    if (depTest.getId().equals(depId)) {
+                        deps.add(depTest);
+                        break;
+                    }
+                }
+            }
+            
+            // Sort dependencies by priority
+            deps.sort((t1, t2) -> {
+                Integer score1 = priorityScores.getOrDefault(t1.getId(), 0);
+                Integer score2 = priorityScores.getOrDefault(t2.getId(), 0);
+                return score2.compareTo(score1); // Descending
+            });
+            
+            // Visit dependencies in priority order
+            for (TestCase dep : deps) {
+                visit(dep, graph, visited, result, testCases, priorityScores);
+            }
+        }
+        
+        // Add test to result
+        result.add(test);
     }
 }

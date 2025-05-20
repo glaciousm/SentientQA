@@ -1,5 +1,7 @@
 package com.projectoracle.rest;
 
+import com.projectoracle.model.TestCase;
+import com.projectoracle.model.TestPriorityConfig;
 import com.projectoracle.service.TestPrioritizationService;
 import com.projectoracle.service.TestPrioritizationService.PrioritizedSuggestion;
 import com.projectoracle.service.TestPrioritizationService.PriorityStats;
@@ -42,5 +44,64 @@ public class TestPrioritizationController {
 
         PriorityStats stats = prioritizationService.getPriorityStats();
         return ResponseEntity.ok(stats);
+    }
+    
+    /**
+     * Prioritize test cases for execution
+     * 
+     * @param tests Test cases to prioritize
+     * @param changedFiles Files that have changed since last execution
+     * @return Prioritized list of test cases
+     */
+    @PostMapping("/execution")
+    public ResponseEntity<List<TestCase>> prioritizeTestExecution(
+            @RequestBody List<TestCase> tests,
+            @RequestParam(required = false) List<String> changedFiles) {
+        
+        log.info("Prioritizing {} tests for execution", tests.size());
+        
+        List<TestCase> prioritizedTests = prioritizationService.prioritizeTestExecution(tests, changedFiles);
+        return ResponseEntity.ok(prioritizedTests);
+    }
+    
+    /**
+     * Get ordered execution plan respecting test dependencies
+     * 
+     * @param tests Test cases to order
+     * @return Ordered test execution plan
+     */
+    @PostMapping("/execution-plan")
+    public ResponseEntity<List<TestCase>> getExecutionPlan(@RequestBody List<TestCase> tests) {
+        log.info("Creating execution plan for {} tests", tests.size());
+        
+        List<TestCase> orderedTests = prioritizationService.getOrderedExecutionPlan(tests);
+        return ResponseEntity.ok(orderedTests);
+    }
+    
+    /**
+     * Get current prioritization configuration
+     * 
+     * @return Test priority configuration
+     */
+    @GetMapping("/config")
+    public ResponseEntity<TestPriorityConfig> getPriorityConfig() {
+        log.info("Getting test priority configuration");
+        
+        TestPriorityConfig config = prioritizationService.getConfig();
+        return ResponseEntity.ok(config);
+    }
+    
+    /**
+     * Update prioritization configuration
+     * 
+     * @param config New priority configuration
+     * @return Updated configuration
+     */
+    @PutMapping("/config")
+    public ResponseEntity<TestPriorityConfig> updatePriorityConfig(@RequestBody TestPriorityConfig config) {
+        log.info("Updating test priority configuration");
+        
+        prioritizationService.setConfig(config);
+        return ResponseEntity.ok(config);
     }
 }

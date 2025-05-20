@@ -7,6 +7,7 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.projectoracle.model.TestCase;
+import com.projectoracle.model.TestExecutionHistory;
 import com.projectoracle.repository.TestCaseRepository;
 
 import org.slf4j.Logger;
@@ -49,10 +50,16 @@ public class TestHealingService {
 
     @Autowired
     private AIModelService aiModelService;
+    
+    @Autowired
+    private FailurePatternRecognizer failurePatternRecognizer;
 
     @Autowired
     @Qualifier("backgroundExecutor")
     private Executor backgroundExecutor;
+    
+    // Repository for test execution history (mock declaration - would be autowired in real impl)
+    private Map<UUID, TestExecutionHistory> testExecutionHistoryRepo = new HashMap<>();
 
     private final JavaParser javaParser = new JavaParser();
 
@@ -95,10 +102,19 @@ public class TestHealingService {
 
                 // Save the healed test
                 testCaseRepository.save(healedTest);
+                
+                // Record the healing attempt in history
+                recordHealingAttempt(testCase.getId(), "Applied automated healing based on pattern analysis", true);
 
                 // Execute the healed test to verify it works
                 CompletableFuture<TestCase> executionResult = testExecutionService.executeTest(healedTest.getId());
                 TestCase executedTest = executionResult.join();
+                
+                // Update history based on execution result
+                boolean healingSuccessful = (executedTest.getStatus() == TestCase.TestStatus.PASSED);
+                if (!healingSuccessful) {
+                    recordHealingAttempt(testCase.getId(), "Healing attempt failed on execution", false);
+                }
 
                 return executedTest;
             } catch (Exception e) {
@@ -107,6 +123,10 @@ public class TestHealingService {
                 testCase.setStatus(TestCase.TestStatus.BROKEN);
                 testCase.setModifiedAt(LocalDateTime.now());
                 testCaseRepository.save(testCase);
+                
+                // Record the failed healing attempt
+                recordHealingAttempt(testCase.getId(), "Healing failed with error: " + e.getMessage(), false);
+                
                 return testCase;
             }
         }, backgroundExecutor);
@@ -142,6 +162,46 @@ public class TestHealingService {
     }
 
     /**
+     * Record a healing attempt in the test execution history
+     * 
+     * @param testId The test ID
+     * @param attemptDescription Description of the healing attempt
+     * @param successful Whether the attempt was successful
+     */
+    private void recordHealingAttempt(UUID testId, String attemptDescription, boolean successful) {
+        TestExecutionHistory history = testExecutionHistoryRepo.get(testId);
+        
+        if (history == null) {
+            // Create new history if none exists
+            TestCase testCase = testCaseRepository.findById(testId);
+            if (testCase != null) {
+                history = new TestExecutionHistory();
+                history.setTestId(testId);
+                history.setTestName(testCase.getName());
+                history.setFirstExecuted(LocalDateTime.now());
+                history.setLastExecuted(LocalDateTime.now());
+                history.setTotalExecutions(0);
+                history.setPassedExecutions(0);
+                history.setFailedExecutions(0);
+                history.setAverageExecutionTime(0);
+                history.setPassRate(0);
+                history.setTrend(TestExecutionHistory.TestExecutionTrend.STABLE_FAIL);
+                history.setPriorityScore(0);
+                history.setHealingSuccessRate(0);
+            } else {
+                return; // Can't find test case
+            }
+        }
+        
+        // Add healing attempt to history
+        String attemptRecord = (successful ? "[SUCCESS] " : "[FAILURE] ") + attemptDescription;
+        history.addHealingAttempt(attemptRecord, successful);
+        
+        // Save history
+        testExecutionHistoryRepo.put(testId, history);
+    }
+    
+    /**
      * Analyze why a test is failing and identify the issues.
      */
     private Map<String, String> analyzeTestFailure(TestCase testCase, MethodInfo currentImplementation) {
@@ -149,6 +209,42 @@ public class TestHealingService {
 
         // Extract the test source code
         String testSourceCode = testCase.getSourceCode();
+        
+        // Get the test execution history
+        TestExecutionHistory history = testExecutionHistoryRepo.get(testCase.getId());
+        
+        // If we have a history of recent failures, use it to detect patterns
+        if (history != null && history.getRecentExecutions() != null && !history.getRecentExecutions().isEmpty()) {
+            TestExecutionHistory.TestExecution latestExecution = history.getRecentExecutions().get(0);
+            
+            if (!latestExecution.isSuccessful()) {
+                // Use the failure pattern recognizer to analyze the failure
+                List<TestExecutionHistory.FailurePattern> patterns = failurePatternRecognizer.analyzeFailure(
+                    testCase, 
+                    latestExecution.getErrorMessage(), 
+                    latestExecution.getStackTrace()
+                );
+                
+                // Add detected patterns to the history
+                for (TestExecutionHistory.FailurePattern pattern : patterns) {
+                    history.addFailurePattern(pattern);
+                    
+                    // Add detected pattern to analysis results
+                    analysisResults.put("pattern_" + pattern.getPatternType(), pattern.getDescription());
+                    
+                    // Add suggested fixes
+                    if (pattern.getSuggestedFixes() != null && !pattern.getSuggestedFixes().isEmpty()) {
+                        for (int i = 0; i < pattern.getSuggestedFixes().size(); i++) {
+                            analysisResults.put("fix_" + pattern.getPatternType() + "_" + i, 
+                                                pattern.getSuggestedFixes().get(i));
+                        }
+                    }
+                }
+                
+                // Save the updated history
+                testExecutionHistoryRepo.put(testCase.getId(), history);
+            }
+        }
 
         try {
             // Parse the test code
@@ -329,7 +425,7 @@ public class TestHealingService {
         StringBuilder promptBuilder = new StringBuilder();
 
         promptBuilder.append("Heal the following broken JUnit 5 test for a Java method. ");
-        promptBuilder.append("The method implementation has changed and the test needs to be updated.\n\n");
+        promptBuilder.append("The test is failing and needs to be fixed.\n\n");
 
         // Add current method info
         promptBuilder.append("CURRENT METHOD IMPLEMENTATION:\n");
@@ -341,17 +437,84 @@ public class TestHealingService {
 
         // Add analysis of the issues
         promptBuilder.append("TEST ISSUES:\n");
+        
+        // Group analysis results by type
+        Map<String, List<String>> groupedResults = new HashMap<>();
+        
         analysisResults.forEach((key, value) -> {
-            promptBuilder.append("- ").append(key).append(": ").append(value).append("\n");
+            if (key.startsWith("pattern_")) {
+                String patternType = key.substring("pattern_".length());
+                groupedResults.computeIfAbsent("detected_patterns", k -> new ArrayList<>()).add(patternType + ": " + value);
+            } else if (key.startsWith("fix_")) {
+                String[] parts = key.split("_");
+                if (parts.length >= 3) {
+                    String patternType = parts[1];
+                    groupedResults.computeIfAbsent("suggested_fixes_" + patternType, k -> new ArrayList<>()).add(value);
+                }
+            } else {
+                groupedResults.computeIfAbsent("other_issues", k -> new ArrayList<>()).add(key + ": " + value);
+            }
         });
+        
+        // Add detected patterns
+        if (groupedResults.containsKey("detected_patterns")) {
+            promptBuilder.append("\nDETECTED FAILURE PATTERNS:\n");
+            for (String pattern : groupedResults.get("detected_patterns")) {
+                promptBuilder.append("- ").append(pattern).append("\n");
+            }
+        }
+        
+        // Add suggested fixes for each pattern type
+        groupedResults.keySet().stream()
+                     .filter(k -> k.startsWith("suggested_fixes_"))
+                     .forEach(key -> {
+                         String patternType = key.substring("suggested_fixes_".length());
+                         promptBuilder.append("\nSUGGESTED FIXES FOR ").append(patternType).append(":\n");
+                         List<String> fixes = groupedResults.get(key);
+                         for (int i = 0; i < fixes.size(); i++) {
+                             promptBuilder.append(i+1).append(". ").append(fixes.get(i)).append("\n");
+                         }
+                     });
+        
+        // Add other issues
+        if (groupedResults.containsKey("other_issues")) {
+            promptBuilder.append("\nOTHER ISSUES:\n");
+            for (String issue : groupedResults.get("other_issues")) {
+                promptBuilder.append("- ").append(issue).append("\n");
+            }
+        }
 
         // Add instructions for healing
         promptBuilder.append("\nPlease create a fixed version of this test that:");
-        promptBuilder.append("\n1. Works with the current method implementation");
-        promptBuilder.append("\n2. Maintains the same test coverage and intent if possible");
-        promptBuilder.append("\n3. Uses proper JUnit 5 syntax");
-        promptBuilder.append("\n4. Includes appropriate imports");
-        promptBuilder.append("\n5. Provides meaningful assertions");
+        promptBuilder.append("\n1. Addresses the specific failure patterns identified above");
+        promptBuilder.append("\n2. Applies the most appropriate fix from the suggested fixes");
+        promptBuilder.append("\n3. Works with the current method implementation");
+        promptBuilder.append("\n4. Maintains the same test coverage and intent");
+        promptBuilder.append("\n5. Uses proper JUnit 5 syntax");
+        promptBuilder.append("\n6. Includes appropriate imports");
+        promptBuilder.append("\n7. Provides meaningful assertions");
+        
+        // Add specific guidance based on failure patterns
+        if (analysisResults.keySet().stream().anyMatch(k -> k.startsWith("pattern_NullPointerException"))) {
+            promptBuilder.append("\n\nFor null pointer exceptions, make sure to:\n");
+            promptBuilder.append("- Add null checks before accessing objects\n");
+            promptBuilder.append("- Initialize objects before use\n");
+            promptBuilder.append("- Use assertNotNull where appropriate\n");
+        }
+        
+        if (analysisResults.keySet().stream().anyMatch(k -> k.startsWith("pattern_AssertionError"))) {
+            promptBuilder.append("\n\nFor assertion errors, make sure to:\n");
+            promptBuilder.append("- Verify expected values match the actual behavior\n");
+            promptBuilder.append("- Consider using more specific assertions (assertEquals, assertFalse, etc.)\n");
+            promptBuilder.append("- Add appropriate delta values for floating point comparisons\n");
+        }
+        
+        if (analysisResults.keySet().stream().anyMatch(k -> k.startsWith("pattern_IndexOutOfBoundsException"))) {
+            promptBuilder.append("\n\nFor index out of bounds exceptions, make sure to:\n");
+            promptBuilder.append("- Check array/collection bounds before accessing elements\n");
+            promptBuilder.append("- Remember that indices are zero-based (max index is length-1)\n");
+            promptBuilder.append("- Check if collections are empty before accessing the first element\n");
+        }
 
         return promptBuilder.toString();
     }
