@@ -45,9 +45,25 @@ public class AIModelService {
     private ModelQuantizationService quantizationService;
 
     private final ConcurrentHashMap<String, ZooModel<String, String>> loadedModels = new ConcurrentHashMap<>();
+    
+    // Track which models are currently loading to avoid duplicate loading
+    private final ConcurrentHashMap<String, Boolean> modelLoadingStatus = new ConcurrentHashMap<>();
+    
+    // Constants for model status tracking
+    public enum ModelStatus {
+        NOT_LOADED,
+        LOADING,
+        LOADED,
+        FAILED
+    }
+    
+    // Map to track current status of each model
+    private final ConcurrentHashMap<String, ModelStatus> modelStatus = new ConcurrentHashMap<>();
 
     /**
      * Initialize the AI model service and prepare directories
+     * Note: With lazy loading, we only create directories, 
+     * but we don't load any models at startup.
      */
     @PostConstruct
     public void init() {
@@ -66,11 +82,12 @@ public class AIModelService {
                 Files.createDirectories(cacheDir);
             }
 
-            logger.info("AI Model Service initialized");
+            logger.info("AI Model Service initialized with lazy loading");
             logger.info("Models directory: {}", aiConfig.getBaseModelDir());
             logger.info("Using GPU: {}", aiConfig.isUseGpu());
             logger.info("Memory limit: {} MB", aiConfig.getMemoryLimitMb());
             logger.info("Quantization enabled: {}", aiConfig.isQuantizeLanguageModel());
+            logger.info("Models will be loaded on first use");
         } catch (IOException e) {
             logger.error("Failed to initialize AI model service", e);
             throw new RuntimeException("Failed to initialize AI model service", e);
@@ -98,83 +115,199 @@ public class AIModelService {
     }
 
     /**
-     * Load the language model (with lazy loading pattern)
+     * Get the current status of a model
+     * 
+     * @param modelKey the key for the model
+     * @return the current status of the model
+     */
+    public ModelStatus getModelStatus(String modelKey) {
+        return modelStatus.getOrDefault(modelKey, ModelStatus.NOT_LOADED);
+    }
+    
+    /**
+     * Check if a model is already loaded
+     * 
+     * @param modelKey the key for the model
+     * @return true if the model is loaded and ready to use
+     */
+    public boolean isModelLoaded(String modelKey) {
+        return loadedModels.containsKey(modelKey) && 
+               modelStatus.getOrDefault(modelKey, ModelStatus.NOT_LOADED) == ModelStatus.LOADED;
+    }
+    
+    /**
+     * Check if a model is currently loading
+     * 
+     * @param modelKey the key for the model
+     * @return true if the model is in the process of being loaded
+     */
+    public boolean isModelLoading(String modelKey) {
+        return modelStatus.getOrDefault(modelKey, ModelStatus.NOT_LOADED) == ModelStatus.LOADING;
+    }
+
+    /**
+     * Load the language model (with true lazy loading pattern)
      * Will automatically download the model if it doesn't exist
+     * Model is only loaded on first use, not at startup
      */
     public ZooModel<String, String> loadLanguageModel() throws ModelNotFoundException, MalformedModelException, IOException {
         String modelName = aiConfig.getLanguageModelName();
         String modelKey = "language-" + modelName;
 
-        return loadedModels.computeIfAbsent(modelKey, k -> {
-            try {
-                logger.info("Loading language model: {}", modelName);
-
-                // Check if model exists, download if needed
-                if (!modelDownloadService.isModelPresent(modelName)) {
-                    logger.info("Model {} not found locally, downloading...", modelName);
-                    modelDownloadService.downloadModelIfNeeded(modelName);
+        // If model is already loaded, return it
+        if (isModelLoaded(modelKey)) {
+            logger.debug("Using already loaded language model: {}", modelName);
+            return loadedModels.get(modelKey);
+        }
+        
+        // If model is currently loading, wait for it
+        if (isModelLoading(modelKey)) {
+            logger.info("Language model {} is currently loading, waiting...", modelName);
+            // Simple wait-and-check loop (in production, use proper synchronization)
+            int attempts = 0;
+            while (isModelLoading(modelKey) && attempts < 30) {
+                try {
+                    Thread.sleep(1000); // Wait 1 second
+                    attempts++;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted while waiting for model to load");
                 }
-
-                // Determine whether to use quantization
-                Criteria.Builder criteriaBuilder;
-                
-                if (aiConfig.isQuantizeLanguageModel()) {
-                    // Use quantized model (FP16 or INT8 based on config)
-                    QuantizationLevel level = aiConfig.getQuantizationLevel().equals("INT8") ? 
-                                QuantizationLevel.INT8 : QuantizationLevel.FP16;
-                    
-                    logger.info("Loading quantized model with level: {}", level);
-                    criteriaBuilder = quantizationService.getQuantizedModelCriteria(modelName, level);
-                    criteriaBuilder.optTranslator(new TextGenerationTranslator(1024));
-                } else {
-                    // Use regular model (FP32)
-                    criteriaBuilder = Criteria.builder()
-                            .setTypes(String.class, String.class)
-                            .optModelPath(aiConfig.getLanguageModelPath())
-                            .optEngine("PyTorch")
-                            .optTranslator(new TextGenerationTranslator(1024));
-                }
-                
-                // Build criteria and load model
-                return ModelZoo.loadModel(criteriaBuilder.build());
-            } catch (ModelNotFoundException | MalformedModelException | IOException e) {
-                logger.error("Failed to load language model", e);
-                throw new RuntimeException("Failed to load language model", e);
             }
-        });
+            
+            // Check if model is now loaded
+            if (isModelLoaded(modelKey)) {
+                return loadedModels.get(modelKey);
+            } else {
+                throw new IOException("Timeout waiting for model to load");
+            }
+        }
+
+        // Set status to loading before we start
+        modelStatus.put(modelKey, ModelStatus.LOADING);
+        
+        try {
+            logger.info("Lazy-loading language model on first use: {}", modelName);
+
+            // Check if model exists, download if needed
+            if (!modelDownloadService.isModelPresent(modelName)) {
+                logger.info("Model {} not found locally, downloading...", modelName);
+                modelDownloadService.downloadModelIfNeeded(modelName);
+            }
+
+            // Determine whether to use quantization
+            Criteria.Builder criteriaBuilder;
+            
+            if (aiConfig.isQuantizeLanguageModel()) {
+                // Use quantized model (FP16 or INT8 based on config)
+                QuantizationLevel level = aiConfig.getQuantizationLevel().equals("INT8") ? 
+                            QuantizationLevel.INT8 : QuantizationLevel.FP16;
+                
+                logger.info("Loading quantized model with level: {}", level);
+                criteriaBuilder = quantizationService.getQuantizedModelCriteria(modelName, level);
+                criteriaBuilder.optTranslator(new TextGenerationTranslator(1024));
+            } else {
+                // Use regular model (FP32)
+                criteriaBuilder = Criteria.builder()
+                        .setTypes(String.class, String.class)
+                        .optModelPath(aiConfig.getLanguageModelPath())
+                        .optEngine("PyTorch")
+                        .optTranslator(new TextGenerationTranslator(1024));
+            }
+            
+            // Build criteria and load model
+            ZooModel<String, String> model = ModelZoo.loadModel(criteriaBuilder.build());
+            
+            // Store the loaded model
+            loadedModels.put(modelKey, model);
+            
+            // Update status to loaded
+            modelStatus.put(modelKey, ModelStatus.LOADED);
+            
+            logger.info("Successfully loaded language model: {}", modelName);
+            return model;
+        } catch (ModelNotFoundException | MalformedModelException | IOException e) {
+            // Update status to failed
+            modelStatus.put(modelKey, ModelStatus.FAILED);
+            logger.error("Failed to load language model", e);
+            throw e;
+        }
     }
 
     /**
-     * Load the embeddings model
+     * Load the embeddings model (with lazy loading pattern)
      * Will automatically download the model if it doesn't exist
+     * Model is only loaded on first use, not at startup
      */
     public ZooModel<String, String> loadEmbeddingsModel() throws ModelNotFoundException, MalformedModelException, IOException {
         String modelName = aiConfig.getEmbeddingsModelName();
         String modelKey = "embeddings-" + modelName;
 
-        return loadedModels.computeIfAbsent(modelKey, k -> {
-            try {
-                logger.info("Loading embeddings model: {}", modelName);
-
-                // Check if model exists, download if needed
-                if (!modelDownloadService.isModelPresent(modelName)) {
-                    logger.info("Model {} not found locally, downloading...", modelName);
-                    modelDownloadService.downloadModelIfNeeded(modelName);
+        // If model is already loaded, return it
+        if (isModelLoaded(modelKey)) {
+            logger.debug("Using already loaded embeddings model: {}", modelName);
+            return loadedModels.get(modelKey);
+        }
+        
+        // If model is currently loading, wait for it
+        if (isModelLoading(modelKey)) {
+            logger.info("Embeddings model {} is currently loading, waiting...", modelName);
+            // Simple wait-and-check loop (in production, use proper synchronization)
+            int attempts = 0;
+            while (isModelLoading(modelKey) && attempts < 30) {
+                try {
+                    Thread.sleep(1000); // Wait 1 second
+                    attempts++;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted while waiting for model to load");
                 }
-
-                // Set criteria for model loading
-                Criteria<String, String> criteria = Criteria.builder()
-                                                            .setTypes(String.class, String.class)
-                                                            .optModelPath(aiConfig.getEmbeddingsModelPath())
-                                                            .optEngine("PyTorch")
-                                                            .build();
-
-                return ModelZoo.loadModel(criteria);
-            } catch (ModelNotFoundException | MalformedModelException | IOException e) {
-                logger.error("Failed to load embeddings model", e);
-                throw new RuntimeException("Failed to load embeddings model", e);
             }
-        });
+            
+            // Check if model is now loaded
+            if (isModelLoaded(modelKey)) {
+                return loadedModels.get(modelKey);
+            } else {
+                throw new IOException("Timeout waiting for model to load");
+            }
+        }
+
+        // Set status to loading before we start
+        modelStatus.put(modelKey, ModelStatus.LOADING);
+        
+        try {
+            logger.info("Lazy-loading embeddings model on first use: {}", modelName);
+
+            // Check if model exists, download if needed
+            if (!modelDownloadService.isModelPresent(modelName)) {
+                logger.info("Model {} not found locally, downloading...", modelName);
+                modelDownloadService.downloadModelIfNeeded(modelName);
+            }
+
+            // Set criteria for model loading
+            Criteria<String, String> criteria = Criteria.builder()
+                                                        .setTypes(String.class, String.class)
+                                                        .optModelPath(aiConfig.getEmbeddingsModelPath())
+                                                        .optEngine("PyTorch")
+                                                        .build();
+
+            // Load the model
+            ZooModel<String, String> model = ModelZoo.loadModel(criteria);
+            
+            // Store the loaded model
+            loadedModels.put(modelKey, model);
+            
+            // Update status to loaded
+            modelStatus.put(modelKey, ModelStatus.LOADED);
+            
+            logger.info("Successfully loaded embeddings model: {}", modelName);
+            return model;
+        } catch (ModelNotFoundException | MalformedModelException | IOException e) {
+            // Update status to failed
+            modelStatus.put(modelKey, ModelStatus.FAILED);
+            logger.error("Failed to load embeddings model", e);
+            throw e;
+        }
     }
 
     /**

@@ -12,7 +12,46 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+<!-- Full-page loading overlay -->
+<div id="pageLoadingOverlay" class="loading-overlay">
+  <div class="loading-spinner-container">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="loading-message">Loading Project Oracle...</p>
+  </div>
+</div>
+
 <!-- Main HTML content here -->
+
+<!-- Model Status Display -->
+<div id="modelStatusContainer" class="position-fixed bottom-0 end-0 m-3 p-3 bg-white shadow-sm rounded" style="z-index: 1000; display: none;">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="mb-0">AI Model Status</h6>
+    <button type="button" class="btn-close" aria-label="Close" onclick="toggleModelStatus()"></button>
+  </div>
+  <div id="modelStatusContent">
+    <div class="mb-2">
+      <div class="d-flex justify-content-between align-items-center">
+        <span>Language Model</span>
+        <span id="languageModelStatus" class="model-loading-status model-status-not-loaded">NOT LOADED</span>
+      </div>
+      <div class="progress mt-1" style="height: 4px;">
+        <div id="languageModelProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+      </div>
+    </div>
+    <div class="mb-2">
+      <div class="d-flex justify-content-between align-items-center">
+        <span>Embeddings Model</span>
+        <span id="embeddingsModelStatus" class="model-loading-status model-status-not-loaded">NOT LOADED</span>
+      </div>
+      <div class="progress mt-1" style="height: 4px;">
+        <div id="embeddingsModelProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+      </div>
+    </div>
+    <button id="refreshModelStatusBtn" class="btn btn-sm btn-outline-primary mt-2 w-100">Refresh Status</button>
+  </div>
+</div>
 
 <!-- JavaScript Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -37,8 +76,24 @@
   let statusChart;
   let memorySavingsChart;
 
+  // Global variables for model status
+  let modelStatusVisible = false;
+  let modelStatusPollingInterval = null;
+  const modelStatusUpdateFrequency = 2000; // 2 seconds
+
   // Initialize the application
   document.addEventListener('DOMContentLoaded', function() {
+    // Hide loading overlay after a minimum display time
+    setTimeout(function() {
+      const pageLoadingOverlay = document.getElementById('pageLoadingOverlay');
+      if (pageLoadingOverlay) {
+        pageLoadingOverlay.classList.add('hidden');
+        setTimeout(() => {
+          pageLoadingOverlay.style.display = 'none';
+        }, 300);
+      }
+    }, 1000);
+
     // Initialize Dashboard
     initDashboard();
 
@@ -56,7 +111,134 @@
 
     // Initialize Model Optimization
     initModelOptimization();
+    
+    // Initialize Model Status Display
+    initModelStatus();
   });
+  
+  // Function to toggle model status display
+  function toggleModelStatus() {
+    const modelStatusContainer = document.getElementById('modelStatusContainer');
+    if (!modelStatusContainer) return;
+    
+    if (modelStatusVisible) {
+      modelStatusContainer.style.display = 'none';
+      modelStatusVisible = false;
+      if (modelStatusPollingInterval) {
+        clearInterval(modelStatusPollingInterval);
+        modelStatusPollingInterval = null;
+      }
+    } else {
+      modelStatusContainer.style.display = 'block';
+      modelStatusVisible = true;
+      updateModelStatus();
+      if (!modelStatusPollingInterval) {
+        modelStatusPollingInterval = setInterval(updateModelStatus, modelStatusUpdateFrequency);
+      }
+    }
+  }
+  
+  // Initialize model status display
+  function initModelStatus() {
+    const refreshModelStatusBtn = document.getElementById('refreshModelStatusBtn');
+    if (refreshModelStatusBtn) {
+      refreshModelStatusBtn.addEventListener('click', updateModelStatus);
+    }
+    
+    // Add a toggle button to the navbar if it exists
+    const navbar = document.querySelector('.navbar-nav');
+    if (navbar) {
+      const modelStatusToggleBtn = document.createElement('li');
+      modelStatusToggleBtn.className = 'nav-item';
+      modelStatusToggleBtn.innerHTML = `
+        <a class="nav-link" href="#" onclick="toggleModelStatus(); return false;">
+          <i class="bi bi-hdd"></i> Model Status
+        </a>
+      `;
+      navbar.appendChild(modelStatusToggleBtn);
+    }
+  }
+  
+  // Update model status display
+  function updateModelStatus() {
+    const languageModelStatus = document.getElementById('languageModelStatus');
+    const embeddingsModelStatus = document.getElementById('embeddingsModelStatus');
+    const languageModelProgress = document.getElementById('languageModelProgress');
+    const embeddingsModelProgress = document.getElementById('embeddingsModelProgress');
+    
+    if (!languageModelStatus || !embeddingsModelStatus) return;
+    
+    // Fetch model status from API
+    fetch(`${API_BASE_URL}/models/status`)
+      .then(response => response.json())
+      .then(statuses => {
+        // Update language model status
+        const languageModel = statuses['language-gpt2-medium'];
+        if (languageModel) {
+          updateModelStatusUI(languageModel.status, languageModelStatus, languageModelProgress);
+        }
+        
+        // Update embeddings model status
+        const embeddingsModel = statuses['embeddings-all-MiniLM-L6-v2'];
+        if (embeddingsModel) {
+          updateModelStatusUI(embeddingsModel.status, embeddingsModelStatus, embeddingsModelProgress);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching model status:', error);
+        // Set both to unknown status
+        updateModelStatusUI('NOT_LOADED', languageModelStatus, languageModelProgress);
+        updateModelStatusUI('NOT_LOADED', embeddingsModelStatus, embeddingsModelProgress);
+      });
+  }
+  
+  // Update model status UI elements
+  function updateModelStatusUI(status, statusElement, progressElement) {
+    // Remove all status classes
+    statusElement.classList.remove(
+      'model-status-not-loaded',
+      'model-status-loading',
+      'model-status-loaded',
+      'model-status-failed'
+    );
+    
+    // Set progress and status based on model status
+    switch (status) {
+      case 'NOT_LOADED':
+        statusElement.textContent = 'NOT LOADED';
+        statusElement.classList.add('model-status-not-loaded');
+        if (progressElement) progressElement.style.width = '0%';
+        break;
+      case 'LOADING':
+        statusElement.textContent = 'LOADING';
+        statusElement.classList.add('model-status-loading');
+        if (progressElement) {
+          progressElement.style.width = '50%';
+          progressElement.classList.add('progress-bar-striped', 'progress-bar-animated');
+        }
+        break;
+      case 'LOADED':
+        statusElement.textContent = 'LOADED';
+        statusElement.classList.add('model-status-loaded');
+        if (progressElement) {
+          progressElement.style.width = '100%';
+          progressElement.classList.remove('progress-bar-striped', 'progress-bar-animated');
+        }
+        break;
+      case 'FAILED':
+        statusElement.textContent = 'FAILED';
+        statusElement.classList.add('model-status-failed');
+        if (progressElement) {
+          progressElement.style.width = '100%';
+          progressElement.classList.remove('progress-bar-striped', 'progress-bar-animated');
+        }
+        break;
+      default:
+        statusElement.textContent = 'UNKNOWN';
+        statusElement.classList.add('model-status-not-loaded');
+        if (progressElement) progressElement.style.width = '0%';
+    }
+  }
 
   // Dashboard Functions
   function initDashboard() {
@@ -188,6 +370,58 @@
   }
 
   function loadRecentTests() {
+    // First, show skeleton loading indicators
+    recentTestsList.innerHTML = '';
+    
+    // Add skeleton placeholders
+    for (let i = 0; i < 5; i++) {
+      const skeletonItem = document.createElement('div');
+      skeletonItem.className = 'test-item p-2 mb-2';
+      skeletonItem.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div style="width: 80%;">
+                                    <div class="skeleton-loader" style="height: 16px; width: 60%;"></div>
+                                    <div class="skeleton-loader" style="height: 12px; width: 40%;"></div>
+                                </div>
+                                <div class="skeleton-loader" style="height: 20px; width: 60px; border-radius: 20px;"></div>
+                            </div>
+                        `;
+      recentTestsList.appendChild(skeletonItem);
+    }
+    
+    // Now perform the lazy loading
+    loadRecentTestsLazily();
+  }
+  
+  function loadRecentTestsLazily() {
+    // Create a new IntersectionObserver to detect when the test list becomes visible
+    const observer = new IntersectionObserver((entries) => {
+      // If the test list is visible in the viewport
+      if (entries[0].isIntersecting) {
+        // Disconnect the observer as we only need to trigger once
+        observer.disconnect();
+        
+        // Fetch the data
+        // Use setTimeout to simulate network delay and show the skeleton effect
+        setTimeout(() => {
+          fetchRecentTests();
+        }, 500);
+      }
+    }, {
+      root: null, // Use the viewport as the root
+      threshold: 0.1 // Trigger when at least 10% of the element is visible
+    });
+    
+    // Start observing the test list container
+    if (recentTestsList) {
+      observer.observe(recentTestsList);
+    } else {
+      // If for some reason the element doesn't exist, just fetch the data directly
+      fetchRecentTests();
+    }
+  }
+  
+  function fetchRecentTests() {
     // Fetch recent tests from API
     fetch(`${API_BASE_URL}/tests`)
     .then(response => response.json())
@@ -198,13 +432,13 @@
       // Take only the 10 most recent tests
       const recentTests = tests.slice(0, 10);
 
-      // Clear the list
+      // Clear the list (remove skeleton loaders)
       recentTestsList.innerHTML = '';
 
       // Add each test to the list
       recentTests.forEach(test => {
         const testItem = document.createElement('div');
-        testItem.className = `test-item p-2 mb-2 ${getTestStatusClass(test.status)}`;
+        testItem.className = `test-item p-2 mb-2 ${getTestStatusClass(test.status)} fade-in`;
 
         testItem.innerHTML = `
                             <div class="d-flex justify-content-between align-items-center">
@@ -242,21 +476,28 @@
     const classes = ['TestCalculator', 'TestAuthService', 'TestValidator', 'TestExceptionHandler', 'TestFileService',
       'TestOrderService', 'TestCheckoutService', 'TestReportGenerator', 'TestNotificationService', 'TestParser'];
 
+    // Add items one by one with a slight delay for animation effect
+    let delay = 0;
+    
     for (let i = 0; i < 10; i++) {
-      const testItem = document.createElement('div');
-      testItem.className = `test-item p-2 mb-2 ${getTestStatusClass(statuses[i])}`;
+      setTimeout(() => {
+        const testItem = document.createElement('div');
+        testItem.className = `test-item p-2 mb-2 ${getTestStatusClass(statuses[i])} fade-in`;
 
-      testItem.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-0">${names[i]}</h6>
-                            <small class="text-muted">${classes[i]}</small>
-                        </div>
-                        <span class="test-status ${getTestStatusBadgeClass(statuses[i])}">${statuses[i]}</span>
-                    </div>
-                `;
+        testItem.innerHTML = `
+                      <div class="d-flex justify-content-between align-items-center">
+                          <div>
+                              <h6 class="mb-0">${names[i]}</h6>
+                              <small class="text-muted">${classes[i]}</small>
+                          </div>
+                          <span class="test-status ${getTestStatusBadgeClass(statuses[i])}">${statuses[i]}</span>
+                      </div>
+                  `;
 
-      recentTestsList.appendChild(testItem);
+        recentTestsList.appendChild(testItem);
+      }, delay);
+      
+      delay += 50; // Add 50ms delay between each item for staggered appearance
     }
   }
 
@@ -289,15 +530,29 @@
       return;
     }
 
-    // Show loading indicator
+    // Show loading indicator with skeleton placeholders
     analysisResults.innerHTML = `
-                <div class="text-center py-3">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                <div class="component-loading">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Analyzing code...</p>
+                        <small class="text-muted">This may take a moment if AI models need to be loaded</small>
                     </div>
-                    <p class="mt-2">Analyzing code...</p>
+                </div>
+                <div class="mt-3">
+                    <div class="skeleton-loader title"></div>
+                    <div class="skeleton-loader line"></div>
+                    <div class="skeleton-loader line"></div>
+                    <div class="skeleton-loader line"></div>
                 </div>
             `;
+            
+    // Show model status display to provide feedback on model loading
+    if (!modelStatusVisible) {
+        toggleModelStatus();
+    }
 
     // Call the API to analyze the code
     fetch(`${API_BASE_URL}/analyze/code`, {
@@ -333,15 +588,29 @@
       return;
     }
 
-    // Show loading indicator
+    // Show loading indicator with skeleton placeholders
     analysisResults.innerHTML = `
-                <div class="text-center py-3">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                <div class="component-loading">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Analyzing file...</p>
+                        <small class="text-muted">This may take a moment if AI models need to be loaded</small>
                     </div>
-                    <p class="mt-2">Analyzing file...</p>
+                </div>
+                <div class="mt-3">
+                    <div class="skeleton-loader title"></div>
+                    <div class="skeleton-loader line"></div>
+                    <div class="skeleton-loader line"></div>
+                    <div class="skeleton-loader line"></div>
                 </div>
             `;
+            
+    // Show model status display to provide feedback on model loading
+    if (!modelStatusVisible) {
+        toggleModelStatus();
+    }
 
     // Call the API to analyze the file
     fetch(`${API_BASE_URL}/analyze/file?filePath=${encodeURIComponent(filePathInput.value)}`)
@@ -371,13 +640,22 @@
       return;
     }
 
-    // Show loading indicator
+    // Show loading indicator with skeleton placeholders
     analysisResults.innerHTML = `
-                <div class="text-center py-3">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                <div class="component-loading">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Scanning directory...</p>
+                        <small class="text-muted">This may take a moment for large directories</small>
                     </div>
-                    <p class="mt-2">Scanning directory...</p>
+                </div>
+                <div class="mt-3">
+                    <div class="skeleton-loader title"></div>
+                    <div class="skeleton-loader line"></div>
+                    <div class="skeleton-loader line"></div>
+                    <div class="skeleton-loader line"></div>
                 </div>
             `;
 

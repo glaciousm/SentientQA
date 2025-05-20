@@ -167,6 +167,79 @@ public class ModelController {
     }
     
     /**
+     * Get status of a specific model
+     *
+     * @param modelKey the model key to check
+     * @return status information
+     */
+    @GetMapping("/status/{modelKey}")
+    public ResponseEntity<Map<String, Object>> getModelStatus(@PathVariable String modelKey) {
+        logger.info("Getting status for model: {}", modelKey);
+        
+        Map<String, Object> response = Map.of(
+            "modelKey", modelKey,
+            "status", aiModelService.getModelStatus(modelKey).name(),
+            "isLoaded", aiModelService.isModelLoaded(modelKey),
+            "isLoading", aiModelService.isModelLoading(modelKey)
+        );
+        
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get status of all known models
+     *
+     * @return status information for all models
+     */
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Map<String, Object>>> getAllModelsStatus() {
+        logger.info("Getting status for all models");
+        
+        Map<String, Map<String, Object>> response = new java.util.HashMap<>();
+        
+        // Check language model
+        String languageModelKey = "language-" + aiConfig.getLanguageModelName();
+        Map<String, Object> languageModelStatus = Map.of(
+            "status", aiModelService.getModelStatus(languageModelKey).name(),
+            "isLoaded", aiModelService.isModelLoaded(languageModelKey),
+            "isLoading", aiModelService.isModelLoading(languageModelKey)
+        );
+        response.put(languageModelKey, languageModelStatus);
+        
+        // Check embeddings model
+        String embeddingsModelKey = "embeddings-" + aiConfig.getEmbeddingsModelName();
+        Map<String, Object> embeddingsModelStatus = Map.of(
+            "status", aiModelService.getModelStatus(embeddingsModelKey).name(),
+            "isLoaded", aiModelService.isModelLoaded(embeddingsModelKey),
+            "isLoading", aiModelService.isModelLoading(embeddingsModelKey)
+        );
+        response.put(embeddingsModelKey, embeddingsModelStatus);
+        
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Unload a specific model to free memory resources
+     *
+     * @param modelKey the model key to unload
+     * @return status information
+     */
+    @PostMapping("/unload/{modelKey}")
+    public ResponseEntity<Map<String, Object>> unloadModel(@PathVariable String modelKey) {
+        logger.info("Unloading model: {}", modelKey);
+        
+        aiModelService.unloadModel(modelKey);
+        
+        Map<String, Object> response = Map.of(
+            "modelKey", modelKey,
+            "status", aiModelService.getModelStatus(modelKey).name(),
+            "message", "Model unload request processed"
+        );
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
      * Result of model quantization
      */
     public static class QuantizationResult {
