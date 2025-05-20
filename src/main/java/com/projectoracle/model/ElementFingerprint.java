@@ -1,19 +1,17 @@
 package com.projectoracle.model;
 
+import lombok.Data;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import lombok.Data;
-
 /**
- * Element fingerprint for reliable element identification during test execution.
+ * Element fingerprint for reliable element identification during test healing.
  * Used for test healing when elements change but maintain similar characteristics.
  */
 @Data
 public class ElementFingerprint {
-
     private String id;                          // Unique identifier for this fingerprint
     private String elementId;                   // Element's ID attribute if available
     private String elementName;                 // Element's name attribute if available
@@ -38,9 +36,6 @@ public class ElementFingerprint {
 
     /**
      * Add an attribute to the fingerprint
-     *
-     * @param name attribute name
-     * @param value attribute value
      */
     public void addAttribute(String name, String value) {
         if (attributes == null) {
@@ -51,9 +46,6 @@ public class ElementFingerprint {
 
     /**
      * Add a numeric property to the fingerprint
-     *
-     * @param name property name
-     * @param value property value
      */
     public void addProperty(String name, double value) {
         if (properties == null) {
@@ -64,9 +56,6 @@ public class ElementFingerprint {
 
     /**
      * Calculate match confidence with another fingerprint
-     *
-     * @param other the fingerprint to compare with
-     * @return confidence score between 0.0 and 1.0
      */
     public double calculateMatchConfidence(ElementFingerprint other) {
         if (other == null) {
@@ -136,9 +125,6 @@ public class ElementFingerprint {
 
     /**
      * Check if this fingerprint matches another within the confidence threshold
-     *
-     * @param other the fingerprint to compare with
-     * @return true if the match confidence exceeds the threshold
      */
     public boolean matches(ElementFingerprint other) {
         return calculateMatchConfidence(other) >= confidenceThreshold;
@@ -146,10 +132,6 @@ public class ElementFingerprint {
 
     /**
      * Calculate text similarity using Levenshtein distance
-     *
-     * @param text1 first text
-     * @param text2 second text
-     * @return similarity score between 0.0 and 1.0
      */
     private double calculateTextSimilarity(String text1, String text2) {
         if (text1 == null || text2 == null) {
@@ -183,10 +165,6 @@ public class ElementFingerprint {
 
     /**
      * Calculate Levenshtein distance between two strings
-     *
-     * @param s1 first string
-     * @param s2 second string
-     * @return Levenshtein distance
      */
     private int levenshteinDistance(String s1, String s2) {
         int[][] dp = new int[s1.length() + 1][s2.length() + 1];
@@ -214,17 +192,12 @@ public class ElementFingerprint {
 
     /**
      * Calculate similarity between two attribute maps
-     *
-     * @param attrs1 first attribute map
-     * @param attrs2 second attribute map
-     * @return similarity score between 0.0 and 1.0
      */
     private double calculateAttributeSimilarity(Map<String, String> attrs1, Map<String, String> attrs2) {
         if (attrs1.isEmpty() && attrs2.isEmpty()) {
             return 1.0;
         }
 
-        // Count matching attributes
         int matchCount = 0;
         int totalAttrs = 0;
 
@@ -254,10 +227,6 @@ public class ElementFingerprint {
 
     /**
      * Calculate similarity between two property maps
-     *
-     * @param props1 first property map
-     * @param props2 second property map
-     * @return similarity score between 0.0 and 1.0
      */
     private double calculatePropertySimilarity(Map<String, Double> props1, Map<String, Double> props2) {
         if (props1.isEmpty() && props2.isEmpty()) {
@@ -296,15 +265,8 @@ public class ElementFingerprint {
 
     /**
      * Calculate similarity between two visual signatures
-     *
-     * @param sig1 first visual signature
-     * @param sig2 second visual signature
-     * @return similarity score between 0.0 and 1.0
      */
     private double calculateVisualSimilarity(String sig1, String sig2) {
-        // This is a placeholder implementation
-        // In a real system, we would compare image hashes or feature vectors
-
         if (sig1 == null || sig2 == null) {
             return 0.0;
         }
@@ -319,8 +281,6 @@ public class ElementFingerprint {
 
     /**
      * Generate a simplified fingerprint string for parent references
-     *
-     * @return a simplified fingerprint
      */
     public String toSimplifiedFingerprint() {
         StringBuilder sb = new StringBuilder();
@@ -336,18 +296,5 @@ public class ElementFingerprint {
         }
 
         return sb.toString();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ElementFingerprint that = (ElementFingerprint) o;
-        return Objects.equals(id, that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
     }
 }
