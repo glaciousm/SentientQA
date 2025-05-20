@@ -1,45 +1,105 @@
 # Project Oracle
 
-An AI-powered QA platform that operates locally with free, open-source models.
-
 ## Overview
 
-Project Oracle is a Java-based application that uses local AI models to automate test generation, execution, and analysis. The platform aims to reduce the manual effort required for software testing while improving test coverage and quality.
+**Project Oracle** is an AI-powered software testing platform implemented in Java. It uses local open-source AI models to automatically generate, execute, and analyze tests for Java applications. The system is designed as a Spring Boot application and follows the multi-phase architecture outlined in the Project Oracle design specifications, which include components for code analysis, test generation, execution, reporting, and self-healing. The current implementation closely adheres to the specified architecture and flow.
 
-## Features
+## Installation and Setup
 
-- **Code Analysis**: Automatically analyze Java code to extract structural information
-- **AI-Powered Test Generation**: Generate test cases using local language models
-- **Resource-Optimized**: Designed to run efficiently on standard PC hardware
-- **No Cloud Dependencies**: All AI processing happens locally with free models
+1. **Prerequisites**
+    - Java 21 (JDK)
+    - Maven 3.8+
+    - 4 GB RAM minimum (8 GB recommended)
+    - ~50 GB free disk space (for model files and data)
 
-## Requirements
+2. **Clone the Repository**
+   ```bash
+   git clone https://github.com/glaciousm/SentientQA.git
+   cd SentientQA
+   ```
 
-- Java 21 or higher
-- Maven 3.8 or higher
-- At least 4GB of RAM (8GB+ recommended)
-- 50GB of disk space for models and data
+3. **Build the Project**
+   ```bash
+   mvn clean install
+   ```
 
-## Quick Start
+4. **Run the Application**
+   ```bash
+   java -jar target/project-oracle-0.1.0-SNAPSHOT.jar
+   ```  
+   The server starts on port 8080. On first run, it auto-downloads the default AI model to `output/models`.
 
-1. Clone the repository
-2. Build the project: `mvn clean install`
-3. Run the application: `java -jar target/project-oracle-0.1.0-SNAPSHOT.jar`
-4. Access the API at http://localhost:8080/api/v1/
+## Usage
 
-## API Endpoints
+### Web Dashboard
 
-- `GET /api/v1/health` - Health check
-- `POST /api/v1/analyze/code` - Analyze Java code
-- `GET /api/v1/analyze/file` - Analyze a Java file
-- `GET /api/v1/analyze/directory` - Scan a directory for Java files
-- `POST /api/v1/generate/test` - Generate a test for a method
-- `POST /api/v1/generate/tests/file` - Generate tests for all methods in a file
+Visit `http://localhost:8080` to access the built-in UI:
 
-## Configuration
+- **Analyze Code**  
+  Upload or point to Java source code; the system parses classes and methods.
 
-See `src/main/resources/ai-config.properties` for AI model configuration options.
+- **Generate Tests**  
+  Click to AI-generate JUnit 5 tests for analyzed methods.
 
-## License
+- **Execute Tests**  
+  Run individual or all generated tests; view pass/fail and exception details.
 
-This project is open source and available under the MIT License.
+- **Test Reports**  
+  View/download HTML, JSON, CSV, or Excel reports with stats and coverage charts.
+
+- **Self-Healing** *(Prototype)*  
+  Attempt basic AI-driven fixes for failing tests.
+
+### REST API
+
+All features are available via `/api/v1/...` endpoints. Examples:
+
+```bash
+# Health check
+curl http://localhost:8080/api/v1/health
+
+# Analyze a file
+curl "http://localhost:8080/api/v1/analyze/file?filePath=src/Main.java"
+
+# Generate tests for a method
+curl -X POST http://localhost:8080/api/v1/generate/test      -H "Content-Type: application/json"      -d '{ "className":"com.example.Main", "methodName":"compute", ... }'
+
+# Execute a test by ID
+curl -X POST "http://localhost:8080/api/v1/enhanced-tests/123/execute?waitForResult=true"
+
+# List reports
+curl http://localhost:8080/api/v1/reports/list
+```
+
+Refer to the source Javadoc or log output for full request/response models.
+
+## Architecture Summary
+
+- **Code Analysis** (`CodeAnalysisService`): Parses Java AST via JavaParser into `MethodInfo`.
+- **Test Generation** (`TestGenerationService` + `AIModelService`): Uses a local GPT-2 model via DJL to generate JUnit 5 source code.
+- **UI Crawling** (`UICrawlerService`): Headless Selenium crawler that discovers pages and UI components for end-to-end tests.
+- **API Analysis** (`APITestGenerationService`): Discovers endpoints and generates API tests.
+- **Test Repository** (`TestCaseRepository`): Persists test cases in memory and on disk (JSON).
+- **Execution Engine** (`EnhancedTestExecutionService`): Compiles with Java Compiler API and runs JUnit 5, capturing results.
+- **Reporting** (`TestReportGenerator`): Aggregates results and coverage, outputs HTML/JSON/CSV/Excel.
+- **Self-Healing** (`TestHealingService`): Prototype AI fixes for failing tests.
+
+## Dependencies
+
+- Spring Boot 3
+- Deep Java Library (DJL) + HuggingFace GPT-2
+- JavaParser
+- JUnit 5
+- Selenium WebDriver
+- Jackson, Lombok, SLF4J/Logback
+- Apache POI (Excel reports)
+
+> **Note:** Unused dependencies in `pom.xml` (e.g., Tribuo, Lucene, RocksDB) can be removed to slim the build.
+
+## Conclusion
+
+Project Oracle delivers an end-to-end local QA automation workflow: from code analysis to AI-generated tests, execution, and reporting. See [ROADMAP.md](ROADMAP.md) for upcoming enhancements.
+
+---
+
+*License: MIT (see LICENSE file)*
