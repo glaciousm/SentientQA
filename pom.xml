@@ -89,6 +89,11 @@
       <artifactId>pytorch-engine</artifactId>
       <version>${djl.version}</version>
     </dependency>
+    <dependency>
+      <groupId>ai.djl.onnxruntime</groupId>
+      <artifactId>onnxruntime-engine</artifactId>
+      <version>${djl.version}</version>
+    </dependency>
 
     <!-- Java Parser for Code Analysis -->
     <dependency>
@@ -185,6 +190,11 @@
       <groupId>com.itextpdf</groupId>
       <artifactId>itext-xtra</artifactId>
       <version>5.5.13.3</version>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.onnxruntime</groupId>
+      <artifactId>onnxruntime</artifactId>
+      <version>1.21.1</version>
     </dependency>
   </dependencies>
 

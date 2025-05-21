@@ -148,4 +148,14 @@ public class AIConfig {
     public String getCacheDir() {
         return cacheDir;
     }
+    
+    // Setters for testing and configuration adjustments
+    
+    public void setQuantizeLanguageModel(boolean quantizeLanguageModel) {
+        this.quantizeLanguageModel = quantizeLanguageModel;
+    }
+    
+    public void setQuantizationLevel(String quantizationLevel) {
+        this.quantizationLevel = quantizationLevel;
+    }
 }

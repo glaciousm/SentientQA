@@ -240,6 +240,17 @@ public class ModelController {
     }
     
     /**
+     * Test model loading, quantization, and inference
+     * @return A diagnostic report of the test results
+     */
+    @GetMapping("/test")
+    public ResponseEntity<String> testModels() {
+        logger.info("Testing model loading and inference");
+        String testReport = aiModelService.testModels();
+        return ResponseEntity.ok(testReport);
+    }
+    
+    /**
      * Result of model quantization
      */
     public static class QuantizationResult {
