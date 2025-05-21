@@ -12,6 +12,7 @@ import com.projectoracle.service.KnowledgeIntegrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,6 +32,7 @@ public class KnowledgeIntegrationController {
     private static final Logger logger = LoggerFactory.getLogger(KnowledgeIntegrationController.class);
     
     @Autowired
+    @Qualifier("mainKnowledgeIntegrationService")
     private KnowledgeIntegrationService knowledgeIntegrationService;
     
     @Autowired

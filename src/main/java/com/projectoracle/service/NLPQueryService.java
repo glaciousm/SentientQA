@@ -1,5 +1,6 @@
 package com.projectoracle.service;
 
+
 import com.projectoracle.model.AtlassianCredentials;
 import com.projectoracle.model.KnowledgeSource;
 import com.projectoracle.model.NLPQueryRequest;
@@ -7,6 +8,7 @@ import com.projectoracle.model.TestCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
@@ -30,6 +32,7 @@ public class NLPQueryService {
     private CodeAnalysisService codeAnalysisService;
     
     @Autowired
+    @Qualifier("mainKnowledgeIntegrationService")
     private KnowledgeIntegrationService knowledgeIntegrationService;
     
     /**

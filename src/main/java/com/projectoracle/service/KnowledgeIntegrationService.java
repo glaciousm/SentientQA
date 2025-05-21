@@ -17,7 +17,7 @@ import java.util.Map;
  * This includes integrating API documentation, code comments, external specifications,
  * project documentation, historical test data, and Atlassian (Jira/Confluence) content.
  */
-@Service
+@Service("mainKnowledgeIntegrationService")
 public class KnowledgeIntegrationService {
 
     private static final Logger logger = LoggerFactory.getLogger(KnowledgeIntegrationService.class);

@@ -93,6 +93,11 @@ To manage implementation efficiently (given token constraints), tasks are groupe
     - Implement ticket status tracking and updates
     - Add support for linking tests to existing issues
     - Create dashboards for issue tracking statistics
+  3. Caching improvements (In Progress, High)
+    - Replace ConcurrentMapCacheManager with production-ready solution
+    - Implement Caffeine cache with configurable TTL and size limits
+    - Add Redis support for distributed deployments
+    - Optimize cache configuration for frequently accessed data
 
 - **Stage 10 (Long-Term):**
   1. Plugin architecture for custom generators & models (Planned, Low)
@@ -145,10 +150,11 @@ To manage implementation efficiently (given token constraints), tasks are groupe
 | 12. Real-time test execution updates                                                         | Completed   | Low      | WebSocket updates for live test results.           |
 | 13. CI/CD integration (Docker, Jenkins, GitHub Actions plugins)                              | In Progress | High     | Docker containerization and CI pipelines in development. |
 | 14. Issue tracker automation (auto-create Jira tickets for failures)                         | In Progress | Medium   | Extending JiraService for auto-ticket creation. |
-| 15. Plugin architecture for custom generators & models                                       | Planned     | Low      | Enable extensibility for domain-specific needs.    |
-| 16. Cross-language support (e.g., Python)                                                    | Planned     | Low      | Broaden platform beyond Java.                      |
-| 17. Scalability improvements (distributed storage & execution)                               | Planned     | Medium   | Handle enterprise-scale projects.                  |
-| 18. Model upgrades & fine-tuning on user code                                                | Planned     | Medium   | Improve test quality with advanced AI models.      |
+| 15. Caching improvements (Caffeine, Redis support)                                           | In Progress | High     | Replacing in-memory cache with production solution. |
+| 16. Plugin architecture for custom generators & models                                       | Planned     | Low      | Enable extensibility for domain-specific needs.    |
+| 17. Cross-language support (e.g., Python)                                                    | Planned     | Low      | Broaden platform beyond Java.                      |
+| 18. Scalability improvements (distributed storage & execution)                               | Planned     | Medium   | Handle enterprise-scale projects.                  |
+| 19. Model upgrades & fine-tuning on user code                                                | Planned     | Medium   | Improve test quality with advanced AI models.      |
 
 ---
 

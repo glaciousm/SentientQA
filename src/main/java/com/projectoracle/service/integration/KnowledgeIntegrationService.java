@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * Service for integrating knowledge from different sources into the testing framework.
  * Handles the orchestration of data ingestion from various systems like Jira and Confluence.
  */
-@Service
+@Service("integrationKnowledgeService")
 public class KnowledgeIntegrationService {
 
     private static final Logger logger = LoggerFactory.getLogger(KnowledgeIntegrationService.class);

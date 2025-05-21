@@ -1,47 +1,24 @@
 package com.projectoracle.config;
 
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
-import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.client.RestTemplate;
 
 /**
- * Configuration for the Web UI
+ * Configuration for REST clients
  */
 @Configuration
-@EnableWebMvc
-public class WebConfig implements WebMvcConfigurer {
-
+public class WebConfig {
+    
     /**
-     * Configure resource handlers for static resources
+     * Configure RestTemplate for use with Confluence and other REST API interactions
      */
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/**")
-                .addResourceLocations("classpath:/static/");
-
-        registry.addResourceHandler("/css/**")
-                .addResourceLocations("classpath:/static/css/");
-
-        registry.addResourceHandler("/js/**")
-                .addResourceLocations("classpath:/static/js/");
-
-        registry.addResourceHandler("/images/**")
-                .addResourceLocations("classpath:/static/images/");
-    }
-
-    /**
-     * Configure view controllers for the Web UI
-     */
-    @Override
-    public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addViewController("/").setViewName("forward:/index.html");
-        registry.addViewController("/dashboard").setViewName("forward:/index.html");
-        registry.addViewController("/code-analysis").setViewName("forward:/index.html");
-        registry.addViewController("/test-generation").setViewName("forward:/index.html");
-        registry.addViewController("/test-execution").setViewName("forward:/index.html");
-        registry.addViewController("/test-healing").setViewName("forward:/index.html");
-        registry.addViewController("/model-optimization").setViewName("forward:/index.html");
+    @Bean
+    public RestTemplate restTemplate(RestTemplateBuilder builder) {
+        return builder
+                .setConnectTimeout(java.time.Duration.ofSeconds(10))
+                .setReadTimeout(java.time.Duration.ofSeconds(30))
+                .build();
     }
 }
