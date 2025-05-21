@@ -51,7 +51,7 @@ public class AIModelService {
     private ModelEnvironmentService environmentService;
     
     @Autowired
-    private ModelStartupService startupService;
+    private ModelStateService modelStateService;
 
     private final ConcurrentHashMap<String, ZooModel<String, String>> loadedModels = new ConcurrentHashMap<>();
     
@@ -110,8 +110,8 @@ public class AIModelService {
         logger.info("Generating text with prompt length: {}", prompt.length());
         
         // Check if models were initialized successfully at startup
-        if (!startupService.areModelsReady()) {
-            String error = "AI models are not initialized. Error: " + startupService.getInitializationError();
+        if (!modelStateService.areModelsReady()) {
+            String error = "AI models are not initialized. Error: " + modelStateService.getInitializationError();
             logger.error(error);
             return error;
         }

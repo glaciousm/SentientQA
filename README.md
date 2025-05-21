@@ -123,6 +123,11 @@ curl -X POST http://localhost:8080/api/v1/nlp/generate \
 
 # Get actuator health (admin only)
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/management/health
+
+# Cache Management
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/cache/stats  # Get cache statistics
+curl -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/cache/testCases  # Clear specific cache
+curl -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/cache  # Clear all caches
 ```
 
 Refer to the source Javadoc or log output for full request/response models.
@@ -151,7 +156,8 @@ Refer to the source Javadoc or log output for full request/response models.
 - WebDriverManager 5.7.0
 - H2 Database (for repository persistence)
 - Spring Security (for REST API protection)
-- Spring Cache with Caffeine (for performance optimization)
+- Spring Cache with Caffeine (for high-performance caching)
+- Optional Redis support for distributed caching
 - Jackson, Lombok, SLF4J/Logback
 - Apache POI (Excel reports)
 - JaCoCo (for code coverage analysis)

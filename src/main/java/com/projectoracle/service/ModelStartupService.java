@@ -36,11 +36,15 @@ public class ModelStartupService {
     @Autowired
     private ModelDownloadService modelDownloadService;
 
+    // We can't autowire AIModelService directly because it creates a circular dependency
+    // Instead, we'll use ApplicationContext to get it when needed
     @Autowired
-    private AIModelService aiModelService;
+    private org.springframework.context.ApplicationContext applicationContext;
+    
+    @Autowired
+    private ModelStateService modelStateService;
 
-    private boolean modelsReady = false;
-    private String initializationError = null;
+    // Model state is now managed by ModelStateService
 
     /**
      * Initialize after all beans are created
@@ -75,10 +79,10 @@ public class ModelStartupService {
                     testLoadModels();
 
                     // Mark models as ready if all steps succeed
-                    modelsReady = true;
+                    modelStateService.setModelsReady(true);
                     logger.info("Model initialization complete - all models validated and ready to use");
                 } catch (Exception e) {
-                    initializationError = e.getMessage();
+                    modelStateService.setInitializationError(e.getMessage());
                     logger.error("Model initialization failed: {}", e.getMessage(), e);
                     // We don't throw the exception to prevent application startup failure
                     // Instead, services will check modelsReady flag
@@ -88,9 +92,9 @@ public class ModelStartupService {
             executor.shutdown();
             
             // If models failed to initialize, log a warning that functionality will be limited
-            if (!modelsReady) {
+            if (!modelStateService.areModelsReady()) {
                 logger.warn("APPLICATION RUNNING WITH LIMITED FUNCTIONALITY - MODELS FAILED TO INITIALIZE");
-                logger.warn("Error: {}", initializationError);
+                logger.warn("Error: {}", modelStateService.getInitializationError());
             }
         } catch (Exception e) {
             logger.error("Error during model initialization: {}", e.getMessage(), e);
@@ -200,20 +204,57 @@ public class ModelStartupService {
 
         // Try loading the language model
         logger.info("Loading language model: {}", aiConfig.getLanguageModelName());
-        aiModelService.testLoadLanguageModel();
+        
+        // Use a direct approach to test model loading without depending on AIModelService
+        // This breaks the circular dependency
+        testLoadModelDirectly();
+    }
+    
+    /**
+     * Test load a model directly without using AIModelService
+     */
+    private void testLoadModelDirectly() throws IOException, ModelNotFoundException, MalformedModelException {
+        String modelName = aiConfig.getLanguageModelName();
+        Path modelDir = aiConfig.getModelPath(modelName);
+        Path modelFile = modelDir.resolve(aiConfig.getModelFormat());
+        Path ptFile = modelDir.resolve(modelName + ".pt");
+        
+        logger.info("Directly testing model load for {} from {}", modelName, ptFile);
+        
+        // Verify the files exist
+        if (!Files.exists(modelFile)) {
+            throw new ModelNotFoundException("Model file not found: " + modelFile);
+        }
+        
+        if (!Files.exists(ptFile)) {
+            // Try to create it
+            logger.info("PT file does not exist. Creating from model file.");
+            Files.copy(modelFile, ptFile);
+        }
+        
+        // Try to load the model using basic DJL APIs without requiring AIModelService
+        try {
+            ai.djl.Model model = ai.djl.Model.newInstance("PyTorch");
+            model.load(ptFile);
+            logger.info("Successfully loaded model directly: {}", modelName);
+            model.close();
+        } catch (Exception e) {
+            logger.error("Failed to load model directly: {}", e.getMessage());
+            throw new MalformedModelException("Failed to load model directly", e);
+        }
     }
 
     /**
      * Check if models are ready to use
      */
     public boolean areModelsReady() {
-        return modelsReady;
+        return modelStateService.areModelsReady();
     }
 
     /**
      * Get initialization error if models failed to initialize
      */
     public String getInitializationError() {
-        return initializationError;
+        return modelStateService.getInitializationError();
     }
 }
