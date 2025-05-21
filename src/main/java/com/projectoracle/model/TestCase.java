@@ -49,6 +49,14 @@ public class TestCase {
     // Knowledge integration fields
     private List<KnowledgeSource> knowledgeSources;
     private Double knowledgeEnhancementScore; // How much the test was improved by knowledge integration
+    
+    // UI/API test related fields
+    private String targetPage; // UI page or API endpoint target
+    private String targetEndpoint; // API endpoint path
+    private String baseUrl; // Base URL for test
+    private String httpMethod; // HTTP method for API tests
+    private List<String> components; // UI components involved
+    private List<String> steps; // Steps to perform in the test
 
     /**
      * The type of test case
@@ -115,6 +123,10 @@ public class TestCase {
                 .errorMessage(this.errorMessage)
                 .runningInCi(this.runningInCi)
                 .knowledgeEnhancementScore(this.knowledgeEnhancementScore)
+                .targetPage(this.targetPage)
+                .targetEndpoint(this.targetEndpoint)
+                .baseUrl(this.baseUrl)
+                .httpMethod(this.httpMethod)
                 .build();
         
         // Copy lists (if they exist)
@@ -131,12 +143,37 @@ public class TestCase {
             copy.setKnowledgeSources(new ArrayList<>(this.knowledgeSources));
         }
         
+        // Copy UI/API test related lists
+        if (this.components != null) {
+            copy.setComponents(new ArrayList<>(this.components));
+        }
+        
+        if (this.steps != null) {
+            copy.setSteps(new ArrayList<>(this.steps));
+        }
+        
         // Copy execution result (if it exists)
         if (this.lastExecutionResult != null) {
             copy.setLastExecutionResult(this.lastExecutionResult.deepCopy());
         }
         
         return copy;
+    }
+
+    /**
+     * Check if this is a UI test
+     * @return true if this is a UI test
+     */
+    public boolean isUiTest() {
+        return type == TestType.UI;
+    }
+    
+    /**
+     * Check if this is an API test
+     * @return true if this is an API test
+     */
+    public boolean isApiTest() {
+        return type == TestType.API;
     }
 
     /**
