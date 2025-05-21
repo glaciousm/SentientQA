@@ -33,6 +33,9 @@ public class CrawlerController {
 
     @Autowired
     private CrawlerConfig crawlerConfig;
+    
+    @Autowired
+    private com.projectoracle.service.ModelStartupService modelStartupService;
 
     private final Map<String, CrawlStatus> activeCrawls = new ConcurrentHashMap<>();
     private final ExecutorService executorService = Executors.newFixedThreadPool(4);
@@ -42,6 +45,14 @@ public class CrawlerController {
      */
     @PostMapping("/start")
     public ResponseEntity<CrawlResponse> startCrawl(@RequestBody CrawlRequest request) {
+        // Check if models are ready before starting a crawl
+        if (!modelStartupService.areModelsReady()) {
+            return ResponseEntity.status(503).body(
+                    new CrawlResponse("error", "AI models not initialized: " + 
+                            modelStartupService.getInitializationError(), null, null)
+            );
+        }
+        
         if (request.getBaseUrl() == null || request.getBaseUrl().isEmpty()) {
             return ResponseEntity.badRequest().body(
                     new CrawlResponse("error", "Base URL is required", null, null)

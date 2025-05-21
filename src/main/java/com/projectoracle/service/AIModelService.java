@@ -46,6 +46,12 @@ public class AIModelService {
     
     @Autowired
     private ModelQuantizationService quantizationService;
+    
+    @Autowired
+    private ModelEnvironmentService environmentService;
+    
+    @Autowired
+    private ModelStartupService startupService;
 
     private final ConcurrentHashMap<String, ZooModel<String, String>> loadedModels = new ConcurrentHashMap<>();
     
@@ -102,6 +108,13 @@ public class AIModelService {
      */
     public String generateText(String prompt, int maxTokens) {
         logger.info("Generating text with prompt length: {}", prompt.length());
+        
+        // Check if models were initialized successfully at startup
+        if (!startupService.areModelsReady()) {
+            String error = "AI models are not initialized. Error: " + startupService.getInitializationError();
+            logger.error(error);
+            return error;
+        }
 
         try {
             ZooModel<String, String> model = loadLanguageModel();
@@ -206,14 +219,31 @@ public class AIModelService {
             
             // Explicitly verify the model files before loading
             Path modelDir = aiConfig.getModelPath(modelName);
-            Path modelFile = modelDir.resolve("pytorch_model.bin");
+            Path modelFile = modelDir.resolve(aiConfig.getModelFormat());
+            
+            // First verify the model file integrity
+            verifyAndFixModelFile(modelFile);
             
             // Also create a symlink or copy with .pt extension for DJL compatibility
             Path ptModelFile = modelDir.resolve(modelName + ".pt");
             if (!Files.exists(ptModelFile)) {
                 logger.info("Creating .pt model file for DJL compatibility at {}", ptModelFile);
                 try {
-                    Files.copy(modelFile, ptModelFile, StandardCopyOption.REPLACE_EXISTING);
+                    // Use a native Linux path for better stability
+                    Path tempLinuxDir = Files.createTempDirectory("model_conversion");
+                    Path tempFile = tempLinuxDir.resolve("model.bin");
+                    
+                    // First copy to Linux native filesystem to avoid WSL boundary issues
+                    logger.info("Copying model to Linux native filesystem at {}", tempFile);
+                    Files.copy(modelFile, tempFile, StandardCopyOption.REPLACE_EXISTING);
+                    
+                    // Then copy from Linux native filesystem to final .pt file
+                    logger.info("Creating .pt file from Linux native filesystem");
+                    Files.copy(tempFile, ptModelFile, StandardCopyOption.REPLACE_EXISTING);
+                    
+                    // Cleanup temp file
+                    Files.deleteIfExists(tempFile);
+                    Files.deleteIfExists(tempLinuxDir);
                 } catch (IOException e) {
                     logger.warn("Failed to create .pt model file: {}", e.getMessage());
                     // Continue execution, as the original pytorch_model.bin might still work
@@ -460,6 +490,131 @@ public class AIModelService {
                 logger.error("Error unloading model: " + modelKey, e);
             }
         }
+    }
+    
+    /**
+     * Verify and fix model file integrity, especially useful for WSL environments
+     * where filesystem boundary issues can corrupt files
+     * 
+     * @param modelFile The path to the model file to verify
+     * @return true if file is valid or was successfully fixed
+     */
+    private boolean verifyAndFixModelFile(Path modelFile) {
+        logger.info("Verifying model file integrity: {}", modelFile);
+        
+        try {
+            if (!Files.exists(modelFile)) {
+                logger.error("Model file does not exist: {}", modelFile);
+                return false;
+            }
+            
+            long fileSize = Files.size(modelFile);
+            if (fileSize < 1000000) { // Less than 1MB is suspicious for these models
+                logger.error("Model file size is suspiciously small: {} bytes", fileSize);
+                return false;
+            }
+            
+            // Try to read the first few bytes to verify file access works
+            byte[] buffer = new byte[8192]; // 8KB buffer
+            try (java.io.InputStream is = Files.newInputStream(modelFile)) {
+                int bytesRead = is.read(buffer);
+                logger.info("Successfully read {} bytes from model file", bytesRead);
+                
+                if (bytesRead < 100) {
+                    logger.error("Could only read {} bytes from model file, might be corrupt", bytesRead);
+                    return false;
+                }
+            } catch (IOException e) {
+                logger.error("Failed to read from model file: {}", e.getMessage());
+                return false;
+            }
+            
+            // If this is a WSL environment with Windows paths, copy to native Linux filesystem
+            if (modelFile.toString().startsWith("/mnt/")) {
+                logger.info("Model file is on Windows filesystem in WSL. Will copy to Linux native filesystem");
+                
+                try {
+                    // Create a temporary directory in Linux native filesystem
+                    Path tempDir = Files.createTempDirectory("model_verify");
+                    Path tempModelFile = tempDir.resolve(modelFile.getFileName());
+                    
+                    // Copy model file to native Linux filesystem
+                    logger.info("Copying model to {} to avoid WSL filesystem boundary issues", tempModelFile);
+                    Files.copy(modelFile, tempModelFile, StandardCopyOption.REPLACE_EXISTING);
+                    
+                    // Now copy back to original location
+                    logger.info("Copying model back to original location from Linux native filesystem");
+                    Files.copy(tempModelFile, modelFile, StandardCopyOption.REPLACE_EXISTING);
+                    
+                    // Cleanup
+                    Files.deleteIfExists(tempModelFile);
+                    Files.deleteIfExists(tempDir);
+                    
+                    logger.info("Model file rewritten successfully from Linux native filesystem");
+                    return true;
+                } catch (IOException e) {
+                    logger.error("Failed to fix model file using Linux native filesystem: {}", e.getMessage());
+                    return false;
+                }
+            }
+            
+            // If we got here, file seems ok
+            return true;
+        } catch (Exception e) {
+            logger.error("Unexpected error verifying model file: {}", e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Test load the language model to verify it works
+     * This is used during startup to validate models
+     * 
+     * @return The loaded model, which will be closed by the caller
+     */
+    public ZooModel<String, String> testLoadLanguageModel() throws ModelNotFoundException, MalformedModelException, IOException {
+        String modelName = aiConfig.getLanguageModelName();
+        String modelKey = "language-" + modelName;
+        
+        logger.info("Test loading language model: {}", modelName);
+        
+        // Verify model files
+        Path modelDir = aiConfig.getModelPath(modelName);
+        Path modelFile = modelDir.resolve(aiConfig.getModelFormat());
+        Path ptFile = modelDir.resolve(modelName + ".pt");
+        
+        // Verify files exist
+        if (!Files.exists(modelFile)) {
+            throw new ModelNotFoundException("Model file not found: " + modelFile);
+        }
+        
+        if (!Files.exists(ptFile)) {
+            throw new ModelNotFoundException("PT file not found: " + ptFile);
+        }
+        
+        // Use a simplified loading approach without quantization for testing
+        logger.info("Loading model with criteria without quantization");
+        Criteria<String, String> criteria = Criteria.builder()
+                .setTypes(String.class, String.class)
+                .optModelPath(modelDir)
+                .optModelName(modelName + ".pt")
+                .optEngine("PyTorch")
+                .optTranslator(new TextGenerationTranslator(10))
+                .build();
+        
+        // Try to load the model
+        ZooModel<String, String> model = ModelZoo.loadModel(criteria);
+        
+        // Test with a simple inference
+        try (Predictor<String, String> predictor = model.newPredictor()) {
+            String testResult = predictor.predict("Hello, world");
+            logger.info("Test inference successful: {}", 
+                       testResult.substring(0, Math.min(testResult.length(), 50)));
+        } catch (TranslateException e) {
+            throw new MalformedModelException("Model loaded but inference failed", e);
+        }
+        
+        return model;
     }
     
     /**

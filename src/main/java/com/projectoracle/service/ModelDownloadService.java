@@ -35,9 +35,12 @@ public class ModelDownloadService {
 
     @PostConstruct
     public void init() {
-        // Initialize model URL map
-        modelUrlMap.put("gpt2-medium", "https://huggingface.co/gpt2-medium/resolve/main/pytorch_model.bin");
-        modelUrlMap.put("all-MiniLM-L6-v2", "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/pytorch_model.bin");
+        // Initialize model URL map based on configured format
+        String modelFormat = aiConfig.getModelFormat();
+        
+        // Set URLs based on the configured model format
+        modelUrlMap.put("gpt2-medium", "https://huggingface.co/gpt2-medium/resolve/main/" + modelFormat);
+        modelUrlMap.put("all-MiniLM-L6-v2", "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/" + modelFormat);
 
         try {
             // Create model directory if it doesn't exist
@@ -61,7 +64,7 @@ public class ModelDownloadService {
      * @return true if the model exists locally
      */
     public boolean isModelPresent(String modelName) {
-        Path modelPath = aiConfig.getModelPath(modelName).resolve("pytorch_model.bin");
+        Path modelPath = aiConfig.getModelPath(modelName).resolve(aiConfig.getModelFormat());
         return Files.exists(modelPath);
     }
 
@@ -74,7 +77,7 @@ public class ModelDownloadService {
      */
     public Path downloadModelIfNeeded(String modelName) throws IOException {
         Path modelDir = aiConfig.getModelPath(modelName);
-        Path modelFile = modelDir.resolve("pytorch_model.bin");
+        Path modelFile = modelDir.resolve(aiConfig.getModelFormat());
         Path tempDir = null;
 
         if (Files.exists(modelFile) && Files.size(modelFile) > 1000000) { // Must be at least 1MB
@@ -104,7 +107,7 @@ public class ModelDownloadService {
             }
 
             // Download to temp directory first
-            Path tempModelFile = tempDir.resolve("pytorch_model.bin");
+            Path tempModelFile = tempDir.resolve(aiConfig.getModelFormat());
             downloadFile(modelUrl, tempModelFile, modelName);
 
             // Validate downloaded file - check size is reasonable

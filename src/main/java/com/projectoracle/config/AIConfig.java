@@ -30,6 +30,9 @@ public class AIConfig {
     
     @Value("${ai.model.language.quantization-level:FP16}")
     private String quantizationLevel;
+    
+    @Value("${ai.model.format:pytorch_model.bin}")
+    private String modelFormat;
 
     @Value("${ai.model.embeddings.name:all-MiniLM-L6-v2}")
     private String embeddingsModelName;
@@ -120,6 +123,10 @@ public class AIConfig {
     public String getQuantizationLevel() {
         return quantizationLevel;
     }
+    
+    public String getModelFormat() {
+        return modelFormat;
+    }
 
     public String getEmbeddingsModelName() {
         return embeddingsModelName;
@@ -185,6 +192,10 @@ public class AIConfig {
     
     public void setQuantizationLevel(String quantizationLevel) {
         this.quantizationLevel = quantizationLevel;
+    }
+    
+    public void setModelFormat(String modelFormat) {
+        this.modelFormat = modelFormat;
     }
     
     public void setFallbackToRuleBased(boolean fallbackToRuleBased) {
