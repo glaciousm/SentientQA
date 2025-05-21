@@ -259,7 +259,7 @@ The self-healing process uses pattern recognition and AI:
 
 ### CI/CD Integration
 
-Project Oracle seamlessly integrates with CI/CD pipelines:
+Sentinel seamlessly integrates with CI/CD pipelines:
 
 - **Jenkins Integration**: Runs tests as part of Jenkins pipelines
 - **GitHub Actions**: Integrates with GitHub workflows
@@ -276,7 +276,7 @@ The platform connects with issue tracking systems:
 
 ### Knowledge System Integration
 
-Project Oracle can extract knowledge from various sources:
+Sentinel can extract knowledge from various sources:
 
 - **Confluence**: Extracts documentation and requirements
 - **API Documentation**: Parses OpenAPI/Swagger specifications
@@ -340,7 +340,7 @@ Sentinel's roadmap includes the following key initiatives:
 
 ### Fintech Company Case Study
 
-A hypothetical fintech company implements Project Oracle to improve testing efficiency for their payment processing application. The potential results:
+A hypothetical fintech company implements Sentinel to improve testing efficiency for their payment processing application. The potential results:
 
 - Reduced test creation time through automation
 - Improved test coverage with AI-powered test generation

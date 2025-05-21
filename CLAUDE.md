@@ -32,7 +32,7 @@ mvn test -Dtest=TestClassName#testMethodName
 
 ## Project Architecture
 
-Project Oracle is an AI-powered software testing platform implemented in Java that uses local open-source AI models to automatically generate, execute, and analyze tests for Java applications.
+Sentinel is an AI-powered software testing platform implemented in Java that uses local open-source AI models to automatically generate, execute, and analyze tests for Java applications.
 
 ### Core Components
 

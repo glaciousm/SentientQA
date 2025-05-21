@@ -36,7 +36,7 @@ public class MinimalWebDriverSessionManagerTest {
     @BeforeEach
     void setUp() {
         // Mock crawler config
-        when(crawlerConfig.getUserAgent()).thenReturn("Project Oracle Crawler/1.0");
+        when(crawlerConfig.getUserAgent()).thenReturn("Sentinel Crawler/1.0");
         when(crawlerConfig.getPageLoadTimeoutMs()).thenReturn(30000);
     }
 

@@ -1,7 +1,7 @@
-PROJECT ORACLE: JAVA-BASED PC IMPLEMENTATION
+Sentinel: JAVA-BASED PC IMPLEMENTATION
 Free AI Models Implementation for Consumer Hardware
 OVERVIEW
-This specification outlines a Java-based implementation of Project Oracle designed to run on standard PC
+This specification outlines a Java-based implementation of Sentinel designed to run on standard PC
 hardware. All AI components use completely free, open-source models without commercial limitations or
 licensing restrictions. The architecture is optimized for efficiency on consumer-grade hardware while
 delivering practical QA automation capabilities.
@@ -182,7 +182,7 @@ API Gateway: REST API for tool integration
 Webhook System: Event-based triggers for CI/CD systems
 Messaging Interface: Pub/sub for distributed processing
 CONCLUSION
-This Java-based implementation of Project Oracle delivers practical QA automation capabilities using
+This Java-based implementation of Sentinel delivers practical QA automation capabilities using
 completely free, open-source AI models without commercial limitations. By leveraging Java's enterprisegrade libraries and optimization techniques, the system can run effectively on consumer PC hardware
 while providing valuable test generation and analysis features.
 The phased implementation approach allows for incremental development and deployment, with each

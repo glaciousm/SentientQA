@@ -12,7 +12,7 @@ import java.util.UUID;
 
 /**
  * Represents a test case that can be generated, analyzed, and executed.
- * Core domain object of the Project Oracle system.
+ * Core domain object of the Sentinel system.
  */
 @Data
 @Builder

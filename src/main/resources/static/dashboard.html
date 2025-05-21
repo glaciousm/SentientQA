@@ -31,7 +31,7 @@
   <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
     <div class="container-fluid">
       <a class="navbar-brand" href="dashboard.html">
-        <i class="bi bi-radar"></i> Project Oracle
+        <i class="bi bi-radar"></i> Sentinel
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
@@ -527,26 +527,212 @@
         // Create modal HTML
         const modalHtml = `
           <div class="modal fade" id="scanCodeModal" tabindex="-1" aria-labelledby="scanCodeModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-lg">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h5 class="modal-title" id="scanCodeModalLabel">Scan Code & Generate Tests</h5>
+                  <h5 class="modal-title" id="scanCodeModalLabel">Scan & Generate Tests</h5>
                   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                  <form id="scanCodeForm">
-                    <div class="mb-3">
-                      <label for="sourcePath" class="form-label">Source Path</label>
-                      <input type="text" class="form-control" id="sourcePath" 
-                        placeholder="Enter path to Java file or directory" required>
-                      <div class="form-text">Path to a Java file or directory containing Java files</div>
+                  <ul class="nav nav-tabs" id="scanTypeTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link active" id="code-scan-tab" data-bs-toggle="tab" data-bs-target="#code-scan" type="button" role="tab">Code Scan</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="ui-scan-tab" data-bs-toggle="tab" data-bs-target="#ui-scan" type="button" role="tab">UI Analysis</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="combined-scan-tab" data-bs-toggle="tab" data-bs-target="#combined-scan" type="button" role="tab">Combined Scan</button>
+                    </li>
+                  </ul>
+                  
+                  <div class="tab-content pt-3" id="scanTypeTabContent">
+                    <!-- Code Scan Tab -->
+                    <div class="tab-pane fade show active" id="code-scan" role="tabpanel" aria-labelledby="code-scan-tab">
+                      <form id="codeScanForm">
+                        <div class="form-check form-switch mb-3">
+                          <input class="form-check-input" type="checkbox" id="backendCodeSwitch" checked>
+                          <label class="form-check-label" for="backendCodeSwitch">Include Backend Code</label>
+                        </div>
+                        
+                        <div id="backendCodeSection">
+                          <div class="mb-3">
+                            <label for="backendPath" class="form-label">Backend Source Path</label>
+                            <input type="text" class="form-control" id="backendPath" 
+                              placeholder="Enter path to backend source code">
+                            <div class="form-text">Path to your Java backend code directory or specific file</div>
+                          </div>
+                          
+                          <div class="row mb-3">
+                            <div class="col-md-6">
+                              <label for="backendLanguage" class="form-label">Language</label>
+                              <select class="form-select" id="backendLanguage">
+                                <option value="java" selected>Java</option>
+                                <option value="kotlin">Kotlin</option>
+                                <option value="scala">Scala</option>
+                                <option value="csharp">C#</option>
+                                <option value="python">Python</option>
+                              </select>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="backendFramework" class="form-label">Framework</label>
+                              <select class="form-select" id="backendFramework">
+                                <option value="spring" selected>Spring/Spring Boot</option>
+                                <option value="jakarta">Jakarta EE</option>
+                                <option value="quarkus">Quarkus</option>
+                                <option value="micronaut">Micronaut</option>
+                                <option value="generic">Generic Java</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                          <input class="form-check-input" type="checkbox" id="frontendCodeSwitch">
+                          <label class="form-check-label" for="frontendCodeSwitch">Include Frontend Code</label>
+                        </div>
+                        
+                        <div id="frontendCodeSection" style="display: none;">
+                          <div class="mb-3">
+                            <label for="frontendPath" class="form-label">Frontend Source Path</label>
+                            <input type="text" class="form-control" id="frontendPath" 
+                              placeholder="Enter path to frontend source code">
+                            <div class="form-text">Path to your frontend code directory</div>
+                          </div>
+                          
+                          <div class="row mb-3">
+                            <div class="col-md-6">
+                              <label for="frontendFramework" class="form-label">Framework</label>
+                              <select class="form-select" id="frontendFramework">
+                                <option value="react" selected>React</option>
+                                <option value="angular">Angular</option>
+                                <option value="vue">Vue</option>
+                                <option value="vanilla">Vanilla JS</option>
+                              </select>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="testingLibrary" class="form-label">Testing Library</label>
+                              <select class="form-select" id="testingLibrary">
+                                <option value="jest" selected>Jest</option>
+                                <option value="cypress">Cypress</option>
+                                <option value="playwright">Playwright</option>
+                                <option value="selenium">Selenium</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                          <label for="maxTests" class="form-label">Maximum Tests to Generate</label>
+                          <input type="number" class="form-control" id="maxTests" min="1" max="100" value="10">
+                          <div class="form-text">Limit the number of tests to generate</div>
+                        </div>
+                      </form>
                     </div>
-                    <div class="mb-3">
-                      <label for="maxTests" class="form-label">Maximum Tests</label>
-                      <input type="number" class="form-control" id="maxTests" min="1" max="50" value="10">
-                      <div class="form-text">Maximum number of tests to generate</div>
+                    
+                    <!-- UI Analysis Tab -->
+                    <div class="tab-pane fade" id="ui-scan" role="tabpanel" aria-labelledby="ui-scan-tab">
+                      <form id="uiScanForm">
+                        <div class="mb-3">
+                          <label for="appUrl" class="form-label">Application URL</label>
+                          <input type="url" class="form-control" id="appUrl" 
+                            placeholder="https://your-application-url.com">
+                          <div class="form-text">URL of the application you want to test</div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                          <div class="col-md-6">
+                            <label for="username" class="form-label">Username (Optional)</label>
+                            <input type="text" class="form-control" id="username" placeholder="Username">
+                          </div>
+                          <div class="col-md-6">
+                            <label for="password" class="form-label">Password (Optional)</label>
+                            <input type="password" class="form-control" id="password" placeholder="Password">
+                          </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                          <label for="crawlDepth" class="form-label">Crawl Depth</label>
+                          <select class="form-select" id="crawlDepth">
+                            <option value="1">Minimal (homepage only)</option>
+                            <option value="2">Light (homepage + direct links)</option>
+                            <option value="3" selected>Medium (up to 3 levels deep)</option>
+                            <option value="5">Deep (up to 5 levels deep)</option>
+                            <option value="10">Comprehensive (up to 10 levels deep)</option>
+                          </select>
+                          <div class="form-text">How deep to crawl the application</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                          <label for="testFocus" class="form-label">Test Focus</label>
+                          <select class="form-select" id="testFocus">
+                            <option value="functional" selected>Functional Tests</option>
+                            <option value="visual">Visual/UI Tests</option>
+                            <option value="accessibility">Accessibility Tests</option>
+                            <option value="performance">Performance Tests</option>
+                            <option value="all">All Test Types</option>
+                          </select>
+                        </div>
+                      </form>
                     </div>
-                  </form>
+                    
+                    <!-- Combined Scan Tab -->
+                    <div class="tab-pane fade" id="combined-scan" role="tabpanel" aria-labelledby="combined-scan-tab">
+                      <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Combined scans provide the most comprehensive test generation by analyzing both code and runtime behavior.
+                      </div>
+                      
+                      <form id="combinedScanForm">
+                        <div class="row mb-3">
+                          <div class="col-md-6">
+                            <label for="combinedBackendPath" class="form-label">Backend Source Path</label>
+                            <input type="text" class="form-control" id="combinedBackendPath" 
+                              placeholder="Enter path to backend source code">
+                          </div>
+                          <div class="col-md-6">
+                            <label for="combinedFrontendPath" class="form-label">Frontend Source Path</label>
+                            <input type="text" class="form-control" id="combinedFrontendPath" 
+                              placeholder="Enter path to frontend source code">
+                          </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                          <label for="combinedAppUrl" class="form-label">Application URL</label>
+                          <input type="url" class="form-control" id="combinedAppUrl" 
+                            placeholder="https://your-application-url.com">
+                          <div class="form-text">URL of the application you want to test</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                          <label class="form-label">Test Types to Generate</label>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="unitTestsCheck" checked>
+                            <label class="form-check-label" for="unitTestsCheck">Unit Tests</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="integrationTestsCheck" checked>
+                            <label class="form-check-label" for="integrationTestsCheck">Integration Tests</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="apiTestsCheck" checked>
+                            <label class="form-check-label" for="apiTestsCheck">API Tests</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="uiTestsCheck" checked>
+                            <label class="form-check-label" for="uiTestsCheck">UI Tests</label>
+                          </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                          <label for="combinedMaxTests" class="form-label">Maximum Tests</label>
+                          <input type="number" class="form-control" id="combinedMaxTests" min="1" max="100" value="20">
+                          <div class="form-text">Total tests to generate across all selected types</div>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                  
                   <div id="scanResults" class="mt-3" style="display: none;"></div>
                 </div>
                 <div class="modal-footer">
@@ -573,33 +759,140 @@
           });
         }
         
+        // Initialize frontend code toggle
+        const frontendCodeSwitch = document.getElementById('frontendCodeSwitch');
+        const frontendCodeSection = document.getElementById('frontendCodeSection');
+        if (frontendCodeSwitch && frontendCodeSection) {
+          frontendCodeSwitch.addEventListener('change', function() {
+            frontendCodeSection.style.display = this.checked ? 'block' : 'none';
+          });
+        }
+        
         // Add event listener to scan button
         const scanCodeBtn = document.getElementById('scanCodeBtn');
         if (scanCodeBtn) {
           scanCodeBtn.addEventListener('click', function() {
-            const sourcePath = document.getElementById('sourcePath').value;
-            const maxTests = document.getElementById('maxTests').value;
+            // Determine which tab is active
+            const activeTab = document.querySelector('#scanTypeTabs .nav-link.active').getAttribute('id');
+            let requestData = {};
+            let validInput = true;
             
-            if (!sourcePath) {
-              alert('Please enter a source path');
-              return;
+            // Get form data based on active tab
+            if (activeTab === 'code-scan-tab') {
+              // Code scan selected
+              const backendEnabled = document.getElementById('backendCodeSwitch').checked;
+              const frontendEnabled = document.getElementById('frontendCodeSwitch').checked;
+              
+              // Validate input
+              if (backendEnabled && !document.getElementById('backendPath').value) {
+                alert('Please enter a backend source path');
+                validInput = false;
+              }
+              
+              if (frontendEnabled && !document.getElementById('frontendPath').value) {
+                alert('Please enter a frontend source path');
+                validInput = false;
+              }
+              
+              if (!backendEnabled && !frontendEnabled) {
+                alert('Please select at least one source code type');
+                validInput = false;
+              }
+              
+              if (validInput) {
+                // Build request data
+                requestData = {
+                  scanType: 'code',
+                  maxTests: document.getElementById('maxTests').value,
+                  backend: backendEnabled ? {
+                    path: document.getElementById('backendPath').value,
+                    language: document.getElementById('backendLanguage').value,
+                    framework: document.getElementById('backendFramework').value
+                  } : null,
+                  frontend: frontendEnabled ? {
+                    path: document.getElementById('frontendPath').value,
+                    framework: document.getElementById('frontendFramework').value,
+                    testingLibrary: document.getElementById('testingLibrary').value
+                  } : null
+                };
+              }
+            } else if (activeTab === 'ui-scan-tab') {
+              // UI scan selected
+              const appUrl = document.getElementById('appUrl').value;
+              
+              // Validate input
+              if (!appUrl) {
+                alert('Please enter an application URL');
+                validInput = false;
+              }
+              
+              if (validInput) {
+                // Build request data
+                requestData = {
+                  scanType: 'ui',
+                  appUrl: appUrl,
+                  username: document.getElementById('username').value,
+                  password: document.getElementById('password').value,
+                  crawlDepth: document.getElementById('crawlDepth').value,
+                  testFocus: document.getElementById('testFocus').value
+                };
+              }
+            } else if (activeTab === 'combined-scan-tab') {
+              // Combined scan selected
+              const backendPath = document.getElementById('combinedBackendPath').value;
+              const frontendPath = document.getElementById('combinedFrontendPath').value;
+              const appUrl = document.getElementById('combinedAppUrl').value;
+              
+              // Validate input
+              if (!backendPath && !frontendPath && !appUrl) {
+                alert('Please provide at least one source (backend, frontend, or app URL)');
+                validInput = false;
+              }
+              
+              if (validInput) {
+                // Build request data
+                requestData = {
+                  scanType: 'combined',
+                  backendPath: backendPath,
+                  frontendPath: frontendPath,
+                  appUrl: appUrl,
+                  testTypes: {
+                    unit: document.getElementById('unitTestsCheck').checked,
+                    integration: document.getElementById('integrationTestsCheck').checked,
+                    api: document.getElementById('apiTestsCheck').checked,
+                    ui: document.getElementById('uiTestsCheck').checked
+                  },
+                  maxTests: document.getElementById('combinedMaxTests').value
+                };
+              }
             }
+            
+            // If input is invalid, stop here
+            if (!validInput) return;
             
             // Show loading indicator
             const scanResults = document.getElementById('scanResults');
             scanResults.style.display = 'block';
             scanResults.innerHTML = `
+              <div class="progress mb-3">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+              </div>
               <div class="d-flex justify-content-center">
                 <div class="spinner-border text-primary" role="status">
                   <span class="visually-hidden">Loading...</span>
                 </div>
               </div>
-              <p class="text-center mt-2">Scanning code and generating tests...</p>
-              <p class="text-center text-muted small">This may take a few moments</p>
+              <p class="text-center mt-2">Scanning and generating tests...</p>
+              <p class="text-center text-muted small">This may take a few minutes depending on the scan type</p>
             `;
             
             // Enable real data mode
             localStorage.setItem('useRealData', 'true');
+            
+            // For demo purposes, we'll still use the current API endpoint
+            // In a real implementation, this would be extended with the new parameters
+            const sourcePath = requestData.backend?.path || requestData.frontend?.path || requestData.backendPath || '';
+            const maxTests = requestData.maxTests || 10;
             
             // Call the API to scan code
             fetch(`${API_BASE_URL}/tests/scan?sourcePath=${encodeURIComponent(sourcePath)}&maxTests=${maxTests}`, {

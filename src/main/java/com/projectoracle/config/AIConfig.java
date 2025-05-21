@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * Configuration for AI models and resources used by Project Oracle
+ * Configuration for AI models and resources used by Sentinel
  * This centralizes all AI model paths, parameters, and configurations
  */
 @Configuration

@@ -1,4 +1,4 @@
-# Project Oracle Improvements
+# Sentinel Improvements
 
 ## Current Focus
 

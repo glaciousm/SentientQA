@@ -37,7 +37,7 @@ public class CrawlerConfig {
     /**
      * User agent to use for crawling
      */
-    private String userAgent = "Project Oracle Crawler / 0.1";
+    private String userAgent = "Sentinel Crawler / 0.1";
 
     /**
      * Whether to follow links to external domains
