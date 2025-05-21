@@ -27,6 +27,12 @@ public class TestGenerationService {
 
     @Autowired
     private CodeAnalysisService codeAnalysisService;
+    
+    @Autowired
+    private RuleBasedFallbackService fallbackService;
+    
+    @Autowired
+    private com.projectoracle.config.AIConfig aiConfig;
 
     /**
      * Generate a test case for a specific method
@@ -40,12 +46,42 @@ public class TestGenerationService {
         // Construct a prompt for the AI model
         String prompt = buildPromptForMethod(methodInfo);
 
-        // Generate test code using AI
-        String generatedTestCode = aiModelService.generateText(prompt, 500);
+        // Generate test code using AI with fallback to rule-based generation
+        String generatedTestCode;
+        try {
+            // Try using AI first
+            generatedTestCode = aiModelService.generateText(prompt, 500);
+            
+            // Check if we got an error message instead of actual code
+            if (generatedTestCode.startsWith("Error") || generatedTestCode.startsWith("AI model")) {
+                logger.warn("AI model returned an error, falling back to rule-based generation");
+                // If AI failed and fallback is enabled, use rule-based generation
+                if (aiConfig.isFallbackToRuleBased()) {
+                    generatedTestCode = fallbackService.generateTestForMethod(methodInfo.getSignature(), methodInfo.getClassName());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error using AI model for test generation: {}", e.getMessage());
+            
+            // If fallback is enabled, use rule-based generation
+            if (aiConfig.isFallbackToRuleBased()) {
+                logger.info("Falling back to rule-based test generation");
+                generatedTestCode = fallbackService.generateTestForMethod(methodInfo.getSignature(), methodInfo.getClassName());
+            } else {
+                // If fallback is disabled, just return a placeholder
+                generatedTestCode = "// Error generating test: " + e.getMessage();
+            }
+        }
         
-        // Calculate confidence score boost if knowledge integration was used
+        // Calculate confidence score
         double confidenceScore = 0.8;
         double knowledgeEnhancementScore = 0.0;
+        
+        // If we used fallback generation, confidence is lower
+        if (generatedTestCode.contains("// This is a generic test created as a fallback")) {
+            logger.info("Using fallback generation with lower confidence score");
+            confidenceScore = 0.4; // Lower confidence for rule-based generation
+        }
         
         // If additional context was provided, boost the confidence score
         if (methodInfo.getAdditionalContext() != null && !methodInfo.getAdditionalContext().isEmpty()) {

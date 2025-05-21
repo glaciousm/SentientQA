@@ -62,6 +62,18 @@ public class AIConfig {
 
     @Value("${ai.performance.cache-dir:cache}")
     private String cacheDir;
+    
+    @Value("${ai.system.fallback-to-rule-based:true}")
+    private boolean fallbackToRuleBased;
+    
+    @Value("${ai.system.max-load-retries:3}")
+    private int maxLoadRetries;
+    
+    @Value("${ai.system.load-timeout-ms:120000}")
+    private long loadTimeoutMs;
+    
+    @Value("${ai.system.operation-timeout-ms:60000}")
+    private long operationTimeoutMs;
 
     /**
      * Get the absolute path to a specific model file
@@ -149,6 +161,22 @@ public class AIConfig {
         return cacheDir;
     }
     
+    public boolean isFallbackToRuleBased() {
+        return fallbackToRuleBased;
+    }
+    
+    public int getMaxLoadRetries() {
+        return maxLoadRetries;
+    }
+    
+    public long getLoadTimeoutMs() {
+        return loadTimeoutMs;
+    }
+    
+    public long getOperationTimeoutMs() {
+        return operationTimeoutMs;
+    }
+    
     // Setters for testing and configuration adjustments
     
     public void setQuantizeLanguageModel(boolean quantizeLanguageModel) {
@@ -157,5 +185,21 @@ public class AIConfig {
     
     public void setQuantizationLevel(String quantizationLevel) {
         this.quantizationLevel = quantizationLevel;
+    }
+    
+    public void setFallbackToRuleBased(boolean fallbackToRuleBased) {
+        this.fallbackToRuleBased = fallbackToRuleBased;
+    }
+    
+    public void setMaxLoadRetries(int maxLoadRetries) {
+        this.maxLoadRetries = maxLoadRetries;
+    }
+    
+    public void setLoadTimeoutMs(long loadTimeoutMs) {
+        this.loadTimeoutMs = loadTimeoutMs;
+    }
+    
+    public void setOperationTimeoutMs(long operationTimeoutMs) {
+        this.operationTimeoutMs = operationTimeoutMs;
     }
 }
