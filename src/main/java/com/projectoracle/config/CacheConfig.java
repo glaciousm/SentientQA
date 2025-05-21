@@ -76,8 +76,8 @@ public class CacheConfig {
         // Use the caffeine spec from application.properties
         cacheManager.setCaffeineSpec(com.github.benmanes.caffeine.cache.CaffeineSpec.parse(caffeineSpec));
         
-        // Enable metrics collection
-        cacheManager.setCaffeine(Caffeine.newBuilder().recordStats());
+        // Note: We don't need to set Caffeine builder here as we're using the spec
+        // which already includes recordStats if specified in the properties
         
         logger.info("Caffeine cache manager configured with {} caches: {}", 
                 cacheNames.length, String.join(", ", cacheNames));
