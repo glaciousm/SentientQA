@@ -13,6 +13,7 @@ import lombok.Data;
 @Data
 public class Page {
 
+    private java.util.UUID id = java.util.UUID.randomUUID();
     private String url;
     private String title;
     private String description;

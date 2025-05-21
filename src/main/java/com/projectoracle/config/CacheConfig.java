@@ -53,6 +53,9 @@ public class CacheConfig {
     @Value("${spring.data.redis.password:}")
     private String redisPassword;
     
+    @Value("${spring.data.redis.ssl.enabled:false}")
+    private boolean redisSslEnabled;
+    
     @Value("${spring.cache.redis.time-to-live:600000}")
     private long redisTimeToLive;
     
@@ -94,7 +97,7 @@ public class CacheConfig {
     @Bean
     @ConditionalOnProperty(name = "spring.cache.redis.enabled", havingValue = "true")
     public RedisConnectionFactory redisConnectionFactory() {
-        logger.info("Configuring Redis connection factory for {}:{}", redisHost, redisPort);
+        logger.info("Configuring Redis connection factory for {}:{} with SSL={}", redisHost, redisPort, redisSslEnabled);
         
         RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
         redisConfig.setHostName(redisHost);
@@ -104,7 +107,15 @@ public class CacheConfig {
             redisConfig.setPassword(redisPassword);
         }
         
-        return new LettuceConnectionFactory(redisConfig);
+        // Configure SSL if enabled
+        if (redisSslEnabled) {
+            org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration clientConfig = 
+                org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration.builder()
+                .useSsl().build();
+            return new LettuceConnectionFactory(redisConfig, clientConfig);
+        } else {
+            return new LettuceConnectionFactory(redisConfig);
+        }
     }
     
     /**

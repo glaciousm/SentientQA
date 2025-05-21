@@ -7,7 +7,9 @@ import org.springframework.stereotype.Service;
 
 import com.projectoracle.model.Page;
 import com.projectoracle.model.UIComponent;
+import com.projectoracle.model.UserFlow;
 import com.projectoracle.repository.ElementRepository;
+import com.projectoracle.repository.UserFlowRepository;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,6 +26,9 @@ public class FlowAnalysisService {
 
     @Autowired
     private ElementRepository elementRepository;
+    
+    @Autowired
+    private UserFlowRepository userFlowRepository;
 
     /**
      * Analyzes the collection of pages to identify user flows
@@ -223,6 +228,279 @@ public class FlowAnalysisService {
 
         logger.info("Identified {} potential user journeys", journeys.size());
         return journeys;
+    }
+    
+    /**
+     * Find the most common user journeys in the application
+     * 
+     * @param minFlowsInJourney Minimum number of flows in a journey to be included
+     * @param maxJourneys Maximum number of journeys to return
+     * @return Map of journey name to list of flows in the journey
+     */
+    public Map<String, List<UserFlow>> findCommonUserJourneys(int minFlowsInJourney, int maxJourneys) {
+        logger.info("Finding common user journeys with min flows: {}, max journeys: {}", minFlowsInJourney, maxJourneys);
+        
+        // Get flows from repository
+        List<UserFlow> allFlows = userFlowRepository.getAllFlows();
+        
+        // Map to store journeys
+        Map<String, List<UserFlow>> journeys = new HashMap<>();
+        
+        if (allFlows.isEmpty()) {
+            logger.warn("No flows found in repository");
+            return journeys;
+        }
+        
+        // Group flows by source page
+        Map<UUID, List<UserFlow>> flowsBySource = new HashMap<>();
+        
+        for (UserFlow flow : allFlows) {
+            flowsBySource.computeIfAbsent(flow.getSourcePageId(), k -> new ArrayList<>()).add(flow);
+        }
+        
+        // Find entry points (pages with no incoming flows)
+        Set<UUID> entryPoints = new HashSet<>(flowsBySource.keySet());
+        for (UserFlow flow : allFlows) {
+            entryPoints.remove(flow.getTargetPageId());
+        }
+        
+        // If no entry points found, use pages with the most outgoing flows
+        if (entryPoints.isEmpty()) {
+            logger.info("No clear entry points found, using most connected pages");
+            flowsBySource.entrySet().stream()
+                .sorted((e1, e2) -> Integer.compare(e2.getValue().size(), e1.getValue().size()))
+                .limit(3)
+                .forEach(e -> entryPoints.add(e.getKey()));
+        }
+        
+        // For each entry point, find all possible paths
+        List<List<UserFlow>> allPaths = new ArrayList<>();
+        for (UUID entryPoint : entryPoints) {
+            findAllPaths(entryPoint, new ArrayList<>(), allFlows, allPaths, 0, 5);
+        }
+        
+        // Filter paths to include only those meeting minimum length
+        allPaths = allPaths.stream()
+            .filter(path -> path.size() >= minFlowsInJourney)
+            .sorted((p1, p2) -> Integer.compare(p2.size(), p1.size()))
+            .collect(Collectors.toList());
+        
+        // Take top N journeys
+        int journeyCount = 0;
+        for (List<UserFlow> path : allPaths) {
+            if (journeyCount >= maxJourneys) {
+                break;
+            }
+            
+            // Check if this journey is unique enough compared to ones we already have
+            if (isDistinctJourney(path, journeys.values())) {
+                String journeyName = generateJourneyName(path, journeyCount + 1);
+                journeys.put(journeyName, path);
+                journeyCount++;
+            }
+        }
+        
+        logger.info("Found {} common user journeys", journeys.size());
+        return journeys;
+    }
+    
+    /**
+     * Check if a journey is distinct from existing journeys
+     */
+    private boolean isDistinctJourney(List<com.projectoracle.model.UserFlow> newJourney, 
+                                    Collection<List<com.projectoracle.model.UserFlow>> existingJourneys) {
+        for (List<com.projectoracle.model.UserFlow> existing : existingJourneys) {
+            // If journeys share more than 70% of the same flows, consider them duplicates
+            long commonFlows = newJourney.stream()
+                    .filter(flow -> existing.contains(flow))
+                    .count();
+            
+            double similarity = (double) commonFlows / Math.min(newJourney.size(), existing.size());
+            if (similarity > 0.7) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Generate a descriptive name for a journey
+     */
+    private String generateJourneyName(List<com.projectoracle.model.UserFlow> journey, int index) {
+        if (journey == null || journey.isEmpty()) {
+            return "Journey " + index;
+        }
+        
+        // Get first and last flow
+        com.projectoracle.model.UserFlow firstFlow = journey.get(0);
+        com.projectoracle.model.UserFlow lastFlow = journey.get(journey.size() - 1);
+        
+        // Get page titles if available
+        String startTitle = firstFlow.getSourcePage() != null ? firstFlow.getSourcePage().getTitle() : "Start";
+        String endTitle = lastFlow.getTargetPage() != null ? lastFlow.getTargetPage().getTitle() : "End";
+        
+        // Check for common journey types
+        boolean hasFormSubmission = journey.stream().anyMatch(com.projectoracle.model.UserFlow::isFormSubmission);
+        boolean hasLogin = journey.stream()
+                .anyMatch(flow -> flow.getInteractionDescription() != null && 
+                        flow.getInteractionDescription().toLowerCase().contains("login"));
+                        
+        // Create name based on journey characteristics
+        StringBuilder name = new StringBuilder();
+        
+        if (hasLogin) {
+            name.append("Login to ").append(endTitle);
+        } else if (hasFormSubmission) {
+            name.append("Form Submission: ").append(startTitle).append(" → ").append(endTitle);
+        } else {
+            name.append("Journey ").append(index).append(": ").append(startTitle).append(" → ").append(endTitle);
+        }
+        
+        return name.toString();
+    }
+    
+    /**
+     * Recursively find all paths from a starting page
+     */
+    private void findAllPaths(UUID currentPageId, List<com.projectoracle.model.UserFlow> currentPath, 
+                            List<com.projectoracle.model.UserFlow> allFlows, 
+                            List<List<com.projectoracle.model.UserFlow>> results, 
+                            int depth, int maxDepth) {
+        // Check max depth
+        if (depth >= maxDepth) {
+            if (!currentPath.isEmpty()) {
+                results.add(new ArrayList<>(currentPath));
+            }
+            return;
+        }
+        
+        // Find all flows from current page
+        List<com.projectoracle.model.UserFlow> outgoingFlows = allFlows.stream()
+                .filter(flow -> flow.getSourcePageId().equals(currentPageId))
+                .collect(Collectors.toList());
+        
+        // If no outgoing flows, add current path to results
+        if (outgoingFlows.isEmpty()) {
+            if (!currentPath.isEmpty()) {
+                results.add(new ArrayList<>(currentPath));
+            }
+            return;
+        }
+        
+        // For each outgoing flow, continue path
+        for (com.projectoracle.model.UserFlow flow : outgoingFlows) {
+            // Check for cycles
+            boolean alreadyInPath = currentPath.stream()
+                    .anyMatch(f -> f.getId().equals(flow.getId()));
+            
+            if (!alreadyInPath) {
+                // Add flow to current path
+                currentPath.add(flow);
+                
+                // Continue from target page
+                findAllPaths(flow.getTargetPageId(), currentPath, allFlows, results, depth + 1, maxDepth);
+                
+                // Backtrack
+                currentPath.remove(currentPath.size() - 1);
+            }
+        }
+    }
+    
+    /**
+     * Convert a user flow to a test case structure
+     * 
+     * @param flow The flow to convert
+     * @param testPrefix Prefix for test name and class
+     * @return A TestCase object
+     */
+    public com.projectoracle.model.TestCase convertFlowToTestCase(UserFlow flow, String testPrefix) {
+        // Generate test name
+        String testName = testPrefix + "_";
+        
+        if (flow.getSourcePage() != null && flow.getTargetPage() != null) {
+            testName += sanitizeForMethodName(flow.getSourcePage().getTitle()) + "_to_" + 
+                    sanitizeForMethodName(flow.getTargetPage().getTitle());
+        } else {
+            testName += "Flow_" + flow.getId().toString().substring(0, 8);
+        }
+        
+        // Create test case
+        com.projectoracle.model.TestCase testCase = new com.projectoracle.model.TestCase();
+        testCase.setId(UUID.randomUUID());
+        testCase.setName(testName);
+        
+        // Set description based on flow type
+        StringBuilder description = new StringBuilder();
+        description.append("Test ");
+        
+        if (flow.isFormSubmission()) {
+            description.append("form submission");
+        } else if ("navigation".equals(flow.getFlowType())) {
+            description.append("navigation");
+        } else if ("state_change".equals(flow.getFlowType())) {
+            description.append("state change");
+        } else {
+            description.append("user flow");
+        }
+        
+        if (flow.getSourcePage() != null && flow.getTargetPage() != null) {
+            description.append(" from ")
+                      .append(flow.getSourcePage().getTitle())
+                      .append(" to ")
+                      .append(flow.getTargetPage().getTitle());
+        }
+        
+        testCase.setDescription(description.toString());
+        
+        // Set other properties
+        testCase.setType(com.projectoracle.model.TestCase.TestType.UI);
+        testCase.setPriority(convertPriorityScore(flow.getPriorityScore()));
+        testCase.setStatus(com.projectoracle.model.TestCase.TestStatus.GENERATED);
+        testCase.setMethodName("test" + sanitizeForMethodName(testName));
+        testCase.setClassName(testPrefix + "Test");
+        testCase.setPackageName("com.projectoracle.test.ui.flow");
+        
+        return testCase;
+    }
+    
+    /**
+     * Convert priority score to TestPriority enum
+     */
+    private com.projectoracle.model.TestCase.TestPriority convertPriorityScore(int score) {
+        if (score >= 80) {
+            return com.projectoracle.model.TestCase.TestPriority.CRITICAL;
+        } else if (score >= 60) {
+            return com.projectoracle.model.TestCase.TestPriority.HIGH;
+        } else if (score >= 40) {
+            return com.projectoracle.model.TestCase.TestPriority.MEDIUM;
+        } else {
+            return com.projectoracle.model.TestCase.TestPriority.LOW;
+        }
+    }
+    
+    /**
+     * Sanitize a string for use in a Java method name
+     */
+    private String sanitizeForMethodName(String input) {
+        if (input == null || input.isEmpty()) {
+            return "Unknown";
+        }
+        
+        // Replace non-alphanumeric characters with underscores
+        String sanitized = input.replaceAll("[^a-zA-Z0-9]", "_");
+        
+        // Ensure it starts with a letter
+        if (!Character.isLetter(sanitized.charAt(0))) {
+            sanitized = "Page_" + sanitized;
+        }
+        
+        // Limit length
+        if (sanitized.length() > 30) {
+            sanitized = sanitized.substring(0, 30);
+        }
+        
+        return sanitized;
     }
 
     /**

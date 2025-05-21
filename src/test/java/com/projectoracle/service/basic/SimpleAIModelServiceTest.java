@@ -44,6 +44,7 @@ public class SimpleAIModelServiceTest {
         when(aiConfig.getEmbeddingsModelPath()).thenReturn(Paths.get("models/all-MiniLM-L6-v2"));
         when(aiConfig.isQuantizeLanguageModel()).thenReturn(true);
         when(aiConfig.getQuantizationLevel()).thenReturn("FP16");
+        when(aiConfig.getModelFormat()).thenReturn("pytorch_model.bin");
     }
 
     @Test

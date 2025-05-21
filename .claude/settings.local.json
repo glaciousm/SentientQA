@@ -15,7 +15,11 @@
       "Bash(ls:*)",
       "Bash(sudo mvn:*)",
       "Bash(cp:*)",
-      "Bash(java:*)"
+      "Bash(java:*)",
+      "Bash(sudo mkdir:*)",
+      "Bash(sudo chmod:*)",
+      "Bash(touch:*)",
+      "Bash(./mvnw spring-boot:run:*)"
     ],
     "deny": []
   }

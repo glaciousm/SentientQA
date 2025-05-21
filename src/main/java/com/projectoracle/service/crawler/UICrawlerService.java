@@ -18,11 +18,15 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.support.ui.Select;
 
 import com.projectoracle.model.ElementFingerprint;
 import com.projectoracle.model.Page;
 import com.projectoracle.model.UIComponent;
+import com.projectoracle.model.UserFlow;
 import com.projectoracle.repository.ElementRepository;
+import com.projectoracle.repository.UserFlowRepository;
 import com.projectoracle.config.CrawlerConfig;
 import org.openqa.selenium.NoSuchElementException;
 
@@ -46,11 +50,14 @@ public class UICrawlerService {
     @Autowired
     private ElementFingerprintService elementFingerprintService;
     
-    @Autowired
+    @Autowired(required = false)
     private WebDriverAuthenticationService authenticationService;
 
     @Autowired
     private WebDriverSessionManager webDriverSessionManager;
+    
+    @Autowired
+    private UserFlowRepository userFlowRepository;
 
     private final Map<String, Page> pageRegistry = new ConcurrentHashMap<>();
     private final Set<String> visitedUrls = Collections.synchronizedSet(new HashSet<>());
@@ -140,8 +147,8 @@ public class UICrawlerService {
             // Initialize WebDriver
             driver = createWebDriver();
             
-            // Perform login if authentication is enabled and this is the first page
-            if (crawlerConfig.isHandleAuthentication() && visitedUrls.size() == 1) {
+            // Perform login if authentication is enabled, service is available, and this is the first page
+            if (crawlerConfig.isHandleAuthentication() && authenticationService != null && visitedUrls.size() == 1) {
                 boolean loginSuccess = authenticationService.performLogin(driver);
                 if (!loginSuccess) {
                     logger.warn("Authentication failed. Crawling may be limited.");
@@ -180,6 +187,627 @@ public class UICrawlerService {
                 driver.quit();
             }
         }
+    }
+    
+    /**
+     * Explore a page interactively by clicking elements, filling forms, etc.
+     * More thorough than the standard crawl.
+     * 
+     * @param pageUrl the URL of the page to explore
+     * @param explorationDepth depth of the exploration
+     * @param includeForms whether to interact with forms
+     * @param maxInteractions maximum number of interactions to perform
+     * @return list of discovered pages
+     */
+    public List<Page> explorePageInteractively(String pageUrl, int explorationDepth, 
+                                            boolean includeForms, int maxInteractions) {
+        logger.info("Starting interactive exploration of page: {}", pageUrl);
+        
+        // Clear previous data but keep pageRegistry for reference
+        visitedUrls.clear();
+        stopCrawling = false;
+        
+        WebDriver driver = null;
+        List<Page> discoveredPages = new ArrayList<>();
+        Set<String> visitedStates = new HashSet<>();
+        
+        try {
+            // Initialize WebDriver
+            driver = createWebDriver();
+            
+            // Perform login if authentication is enabled and service is available
+            if (crawlerConfig.isHandleAuthentication() && authenticationService != null) {
+                boolean loginSuccess = authenticationService.performLogin(driver);
+                if (!loginSuccess) {
+                    logger.warn("Authentication failed. Exploration may be limited.");
+                }
+            }
+            
+            // Navigate to the starting URL
+            driver.get(pageUrl);
+            
+            // Wait for page to load
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
+            
+            // Create page object for the start page
+            Page startPage = createPageObject(driver, pageUrl);
+            discoveredPages.add(startPage);
+            
+            // Start interactive crawling
+            discoveredPages.addAll(
+                crawlPageInteractively(driver, startPage, 0, explorationDepth, 
+                                     visitedStates, includeForms, maxInteractions)
+            );
+            
+            logger.info("Interactive exploration completed. Discovered {} pages/states", discoveredPages.size());
+            return discoveredPages;
+            
+        } catch (Exception e) {
+            logger.error("Error during interactive exploration", e);
+            return discoveredPages;
+        } finally {
+            // Close the WebDriver
+            if (driver != null) {
+                driver.quit();
+            }
+        }
+    }
+    
+    /**
+     * Crawl a page interactively by clicking elements, filling forms, etc.
+     * 
+     * @param driver WebDriver instance
+     * @param page Current page
+     * @param currentDepth Current depth of crawling
+     * @param maxDepth Maximum depth to crawl
+     * @param visitedStates States already visited
+     * @param includeForms Whether to interact with forms
+     * @param maxInteractions Maximum number of interactions to perform
+     * @return List of discovered pages
+     */
+    private List<Page> crawlPageInteractively(WebDriver driver, Page page, int currentDepth, int maxDepth, 
+            Set<String> visitedStates, boolean includeForms, int maxInteractions) {
+        List<Page> discoveredPages = new ArrayList<>();
+        
+        // Add current page to discovered pages
+        discoveredPages.add(page);
+        
+        // If we've reached max depth, stop
+        if (currentDepth >= maxDepth) {
+            logger.info("Reached max depth of {}", maxDepth);
+            return discoveredPages;
+        }
+        
+        // Generate current state fingerprint
+        String stateFingerprint = generateStateFingerprint(driver);
+        
+        // Check if we've already visited this state
+        if (visitedStates.contains(stateFingerprint)) {
+            logger.info("Already visited state with fingerprint: {}", stateFingerprint);
+            return discoveredPages;
+        }
+        
+        // Add this state to visited states
+        visitedStates.add(stateFingerprint);
+        
+        // Get all interactive elements on the page
+        List<WebElement> interactiveElements = findInteractiveElements(driver);
+        
+        // Sort elements by priority (important UI components first)
+        sortElementsByPriority(interactiveElements);
+        
+        // Limit the number of interactions if needed
+        if (interactiveElements.size() > maxInteractions) {
+            logger.info("Limiting interactions to {} out of {} elements", 
+                    maxInteractions, interactiveElements.size());
+            interactiveElements = interactiveElements.subList(0, maxInteractions);
+        }
+        
+        // Save original window handle
+        String originalWindowHandle = driver.getWindowHandle();
+        String originalUrl = driver.getCurrentUrl();
+        
+        // Interact with each element
+        int interactionCount = 0;
+        for (WebElement element : interactiveElements) {
+            if (interactionCount >= maxInteractions) {
+                logger.info("Reached maximum interaction count of {}", maxInteractions);
+                break;
+            }
+            
+            try {
+                // Skip invisible elements
+                if (!element.isDisplayed()) {
+                    continue;
+                }
+                
+                // Determine element type
+                String elementType = determineElementType(element);
+                
+                // Skip form elements if includeForms is false
+                if (!includeForms && (elementType.startsWith("input:") || 
+                                    elementType.equals("select") || 
+                                    elementType.equals("textarea"))) {
+                    continue;
+                }
+                
+                // Take a screenshot before interaction (optional)
+                if (crawlerConfig.isTakeScreenshots()) {
+                    takeScreenshot(driver, page.getUrl() + "_before_" + elementType + "_interaction");
+                }
+                
+                // Store current URL and state
+                String preInteractionUrl = driver.getCurrentUrl();
+                String preInteractionState = generateStateFingerprint(driver);
+                
+                // Interact with element based on its type
+                boolean interacted = false;
+                
+                switch (elementType) {
+                    case "link":
+                    case "button":
+                        interacted = clickElement(driver, element);
+                        break;
+                        
+                    case "input:text":
+                    case "input:email":
+                    case "input:password":
+                        interacted = typeIntoElement(element, generateAppropriateInput(elementType));
+                        break;
+                        
+                    case "select":
+                        interacted = selectOption(element, 1); // Select second option by default
+                        break;
+                        
+                    case "checkbox":
+                    case "radio":
+                        interacted = clickElement(driver, element);
+                        break;
+                        
+                    default:
+                        // For other elements, try clicking
+                        interacted = clickElement(driver, element);
+                        break;
+                }
+                
+                // If interaction failed, continue to next element
+                if (!interacted) {
+                    continue;
+                }
+                
+                interactionCount++;
+                
+                // Check for new window/tab
+                Set<String> windowHandles = driver.getWindowHandles();
+                if (windowHandles.size() > 1) {
+                    // Switch to new window
+                    for (String windowHandle : windowHandles) {
+                        if (!windowHandle.equals(originalWindowHandle)) {
+                            driver.switchTo().window(windowHandle);
+                            
+                            // Create page for new window
+                            Page newPage = createPageObject(driver, driver.getCurrentUrl());
+                            discoveredPages.add(newPage);
+                            
+                            // Record this as a flow
+                            recordUserFlow(page, newPage, element, "navigation");
+                            
+                            // Recursively crawl new window if needed
+                            if (currentDepth + 1 < maxDepth) {
+                                discoveredPages.addAll(
+                                    crawlPageInteractively(driver, newPage, currentDepth + 1, maxDepth, 
+                                                       visitedStates, includeForms, maxInteractions)
+                                );
+                            }
+                            
+                            // Close new window and switch back to original
+                            driver.close();
+                            driver.switchTo().window(originalWindowHandle);
+                            break;
+                        }
+                    }
+                } else {
+                    // Check if URL changed
+                    if (!driver.getCurrentUrl().equals(preInteractionUrl)) {
+                        // We navigated to a new page
+                        Page newPage = createPageObject(driver, driver.getCurrentUrl());
+                        discoveredPages.add(newPage);
+                        
+                        // Record this as a navigation flow
+                        recordUserFlow(page, newPage, element, "navigation");
+                        
+                        // Recursively crawl new page if needed
+                        if (currentDepth + 1 < maxDepth) {
+                            discoveredPages.addAll(
+                                crawlPageInteractively(driver, newPage, currentDepth + 1, maxDepth, 
+                                                   visitedStates, includeForms, maxInteractions)
+                            );
+                        }
+                        
+                        // Navigate back to original page
+                        driver.navigate().back();
+                        
+                        // Wait for original page to load
+                        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                        wait.until(ExpectedConditions.urlToBe(preInteractionUrl));
+                    } else {
+                        // URL didn't change, but page state might have
+                        String newStateFingerprint = generateStateFingerprint(driver);
+                        
+                        // If state changed significantly
+                        if (!newStateFingerprint.equals(preInteractionState)) {
+                            // Create a new page object for the new state
+                            Page newStatePage = createPageObject(driver, driver.getCurrentUrl());
+                            discoveredPages.add(newStatePage);
+                            
+                            // Record this as a state change flow
+                            recordUserFlow(page, newStatePage, element, "state_change");
+                            
+                            // Recursively crawl new state if needed
+                            if (currentDepth + 1 < maxDepth) {
+                                discoveredPages.addAll(
+                                    crawlPageInteractively(driver, newStatePage, currentDepth + 1, maxDepth, 
+                                                       visitedStates, includeForms, maxInteractions)
+                                );
+                            }
+                            
+                            // Try to restore original state (may not always work)
+                            // For example by clicking the element again or refreshing
+                            try {
+                                clickElement(driver, element); // Toggle back
+                            } catch (Exception e) {
+                                // If toggling fails, refresh the page
+                                driver.navigate().refresh();
+                                
+                                // Wait for page to load
+                                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                                wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
+                            }
+                        }
+                    }
+                }
+                
+            } catch (Exception e) {
+                logger.error("Error interacting with element", e);
+                
+                // Try to get back to the original URL if something went wrong
+                try {
+                    if (!driver.getCurrentUrl().equals(originalUrl)) {
+                        driver.navigate().to(originalUrl);
+                    }
+                } catch (Exception ex) {
+                    logger.error("Failed to navigate back to original URL", ex);
+                }
+            }
+        }
+        
+        return discoveredPages;
+    }
+    
+    /**
+     * Clicks an element and waits for page changes
+     * 
+     * @param driver WebDriver instance
+     * @param element Element to click
+     * @return true if successful, false otherwise
+     */
+    private boolean clickElement(WebDriver driver, WebElement element) {
+        try {
+            // Store current URL to detect navigation
+            String currentUrl = driver.getCurrentUrl();
+            String currentPageSource = driver.getPageSource().length() > 1000 ? 
+                    driver.getPageSource().substring(0, 1000) : driver.getPageSource();
+            
+            // Scroll to element to ensure it's visible
+            ((JavascriptExecutor) driver).executeScript(
+                    "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element);
+            
+            // Wait a moment for scroll to complete
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            
+            // Click the element
+            element.click();
+            
+            // Wait for page changes
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            
+            // Wait for either URL change or page content change
+            try {
+                wait.until(driver1 -> {
+                    // Check if URL changed
+                    if (!driver1.getCurrentUrl().equals(currentUrl)) {
+                        return true;
+                    }
+                    
+                    // Check if page content changed significantly
+                    String newPageSource = driver1.getPageSource().length() > 1000 ? 
+                            driver1.getPageSource().substring(0, 1000) : driver1.getPageSource();
+                    return !newPageSource.equals(currentPageSource);
+                });
+            } catch (Exception e) {
+                // Timeout or other error, but the click might still have had an effect
+                logger.debug("No significant change after clicking element: {}", e.getMessage());
+            }
+            
+            return true;
+        } catch (Exception e) {
+            logger.error("Error clicking element", e);
+            return false;
+        }
+    }
+
+    /**
+     * Types text into an input field
+     * 
+     * @param element Input element
+     * @param text Text to type
+     * @return true if successful, false otherwise
+     */
+    private boolean typeIntoElement(WebElement element, String text) {
+        try {
+            // Clear existing text
+            element.clear();
+            
+            // Type the text
+            element.sendKeys(text);
+            
+            return true;
+        } catch (Exception e) {
+            logger.error("Error typing into element", e);
+            return false;
+        }
+    }
+
+    /**
+     * Selects an option from a dropdown
+     * 
+     * @param element Select element
+     * @param optionIndex Index of option to select
+     * @return true if successful, false otherwise
+     */
+    private boolean selectOption(WebElement element, int optionIndex) {
+        try {
+            Select select = new Select(element);
+            
+            // Get all options
+            List<WebElement> options = select.getOptions();
+            
+            // Check if index is valid
+            if (optionIndex >= 0 && optionIndex < options.size()) {
+                // Select by index
+                select.selectByIndex(optionIndex);
+                return true;
+            } else {
+                logger.warn("Invalid option index: {}, max: {}", optionIndex, options.size() - 1);
+                return false;
+            }
+        } catch (Exception e) {
+            logger.error("Error selecting option", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Generate appropriate input based on field type
+     */
+    private String generateAppropriateInput(String elementType) {
+        switch (elementType) {
+            case "input:email":
+                return "test@example.com";
+            case "input:password":
+                return "Password123!";
+            case "input:number":
+                return "123";
+            case "input:date":
+                return "2025-01-01";
+            case "input:tel":
+                return "1234567890";
+            default:
+                return "Test Input";
+        }
+    }
+
+    /**
+     * Find all interactive elements on a page
+     */
+    private List<WebElement> findInteractiveElements(WebDriver driver) {
+        List<WebElement> interactiveElements = new ArrayList<>();
+        
+        try {
+            // Find links
+            interactiveElements.addAll(driver.findElements(By.tagName("a")));
+            
+            // Find buttons
+            interactiveElements.addAll(driver.findElements(By.tagName("button")));
+            interactiveElements.addAll(driver.findElements(By.cssSelector("input[type='button'], input[type='submit']")));
+            
+            // Find text inputs
+            interactiveElements.addAll(driver.findElements(By.cssSelector("input[type='text'], input[type='email'], input[type='password'], input[type='search']")));
+            
+            // Find selects
+            interactiveElements.addAll(driver.findElements(By.tagName("select")));
+            
+            // Find checkboxes and radios
+            interactiveElements.addAll(driver.findElements(By.cssSelector("input[type='checkbox'], input[type='radio']")));
+            
+            // Find other clickables with JS event handlers
+            interactiveElements.addAll(driver.findElements(By.cssSelector("[onclick], [data-toggle], [role=button], .btn, .button")));
+        } catch (Exception e) {
+            logger.error("Error finding interactive elements", e);
+        }
+        
+        return interactiveElements;
+    }
+
+    /**
+     * Sort elements by priority (important UI elements first)
+     */
+    private void sortElementsByPriority(List<WebElement> elements) {
+        elements.sort((e1, e2) -> {
+            int priority1 = getElementPriority(e1);
+            int priority2 = getElementPriority(e2);
+            return Integer.compare(priority1, priority2);
+        });
+    }
+
+    /**
+     * Get priority score for an element (lower is higher priority)
+     */
+    private int getElementPriority(WebElement element) {
+        String tagName = element.getTagName().toLowerCase();
+        String type = element.getAttribute("type");
+        
+        // Buttons and links are high priority
+        if (tagName.equals("button") || 
+            (tagName.equals("input") && (type != null && (type.equals("button") || type.equals("submit"))))) {
+            return 1;
+        }
+        
+        // Links are medium priority
+        if (tagName.equals("a")) {
+            // Links with IDs or text are higher priority
+            if (element.getAttribute("id") != null || !element.getText().trim().isEmpty()) {
+                return 2;
+            }
+            return 3;
+        }
+        
+        // Form inputs are medium-low priority
+        if (tagName.equals("input") || tagName.equals("select") || tagName.equals("textarea")) {
+            return 4;
+        }
+        
+        // Everything else is low priority
+        return 5;
+    }
+
+    /**
+     * Determine element type for interaction purposes
+     */
+    private String determineElementType(WebElement element) {
+        String tagName = element.getTagName().toLowerCase();
+        String type = element.getAttribute("type");
+        
+        if (tagName.equals("a")) {
+            return "link";
+        }
+        
+        if (tagName.equals("button") || 
+            (tagName.equals("input") && (type != null && (type.equals("button") || type.equals("submit"))))) {
+            return "button";
+        }
+        
+        if (tagName.equals("input")) {
+            if (type == null) {
+                return "input:text";
+            }
+            return "input:" + type;
+        }
+        
+        if (tagName.equals("select")) {
+            return "select";
+        }
+        
+        return tagName;
+    }
+
+    /**
+     * Generate a fingerprint for the current page state
+     */
+    private String generateStateFingerprint(WebDriver driver) {
+        // Simplified state fingerprinting - in a real implementation, this would be more sophisticated
+        // to detect UI state changes even when URL doesn't change
+        
+        try {
+            // Get visible text content
+            String visibleText = driver.findElement(By.tagName("body")).getText();
+            
+            // Get current URL
+            String url = driver.getCurrentUrl();
+            
+            // Count visible interactive elements
+            int interactiveElementCount = findInteractiveElements(driver).size();
+            
+            // Generate a simple fingerprint
+            return url + "_" + visibleText.hashCode() + "_" + interactiveElementCount;
+        } catch (Exception e) {
+            logger.error("Error generating state fingerprint", e);
+            return driver.getCurrentUrl() + "_" + System.currentTimeMillis();
+        }
+    }
+
+    /**
+     * Record a user flow between two pages
+     */
+    private void recordUserFlow(Page sourcePage, Page targetPage, WebElement interactedElement, String flowType) {
+        try {
+            // Create a flow record
+            UserFlow flow = new UserFlow();
+            flow.setSourcePageId(sourcePage.getId());
+            flow.setTargetPageId(targetPage.getId());
+            flow.setFlowType(flowType);
+            flow.setInteractionType(determineElementType(interactedElement));
+            flow.setInteractionDescription(getElementDescription(interactedElement));
+            flow.setElementSelector(createXPath(interactedElement));
+            flow.setDiscoveryTimestamp(System.currentTimeMillis());
+            
+            // Set form submission flag if applicable
+            if (flowType.equals("form_submission") || 
+                    (interactedElement.getTagName().equalsIgnoreCase("input") && 
+                     interactedElement.getAttribute("type") != null &&
+                     interactedElement.getAttribute("type").equalsIgnoreCase("submit"))) {
+                flow.setFormSubmission(true);
+            }
+            
+            // Set source and target pages
+            flow.setSourcePage(sourcePage);
+            flow.setTargetPage(targetPage);
+            
+            // Save the flow
+            userFlowRepository.saveFlow(flow);
+            
+            logger.info("Recorded user flow: {} -> {} via {}", 
+                    sourcePage.getUrl(), targetPage.getUrl(), flow.getInteractionDescription());
+        } catch (Exception e) {
+            logger.error("Error recording user flow", e);
+        }
+    }
+
+    /**
+     * Get a human-readable description of an element
+     */
+    private String getElementDescription(WebElement element) {
+        String tagName = element.getTagName();
+        String id = element.getAttribute("id");
+        String text = element.getText();
+        String type = element.getAttribute("type");
+        String name = element.getAttribute("name");
+        
+        StringBuilder description = new StringBuilder();
+        description.append(tagName);
+        
+        if (id != null && !id.isEmpty()) {
+            description.append("#").append(id);
+        }
+        
+        if (type != null && !type.isEmpty()) {
+            description.append("[type=").append(type).append("]");
+        }
+        
+        if (name != null && !name.isEmpty()) {
+            description.append("[name=").append(name).append("]");
+        }
+        
+        if (text != null && !text.isEmpty() && text.length() < 30) {
+            description.append(": \"").append(text).append("\"");
+        }
+        
+        return description.toString();
     }
 
     /**
@@ -232,6 +860,7 @@ public class UICrawlerService {
 
         // Create page with basic metadata
         Page page = new Page();
+        page.setId(UUID.randomUUID());
         page.setUrl(url);
         page.setTitle(title);
         page.setDiscoveryTimestamp(System.currentTimeMillis());
@@ -556,6 +1185,38 @@ public class UICrawlerService {
         // to generate a robust XPath
 
         return "(//tagname)[1]".replace("tagname", element.getTagName());
+    }
+    
+    /**
+     * Take a screenshot of the current page
+     */
+    private void takeScreenshot(WebDriver driver, String name) {
+        if (!crawlerConfig.isTakeScreenshots()) {
+            return;
+        }
+        
+        try {
+            // Take screenshot
+            org.openqa.selenium.OutputType<byte[]> outputType = org.openqa.selenium.OutputType.BYTES;
+            byte[] screenshotBytes = ((org.openqa.selenium.TakesScreenshot) driver).getScreenshotAs(outputType);
+            
+            // Save to file
+            java.nio.file.Path screenshotDir = java.nio.file.Paths.get(crawlerConfig.getScreenshotDir());
+            if (!java.nio.file.Files.exists(screenshotDir)) {
+                java.nio.file.Files.createDirectories(screenshotDir);
+            }
+            
+            // Sanitize filename
+            String filename = name.replaceAll("[^a-zA-Z0-9\\._-]", "_") + ".png";
+            java.nio.file.Path screenshotPath = screenshotDir.resolve(filename);
+            
+            // Write screenshot to file
+            java.nio.file.Files.write(screenshotPath, screenshotBytes);
+            
+            logger.info("Saved screenshot to {}", screenshotPath);
+        } catch (Exception e) {
+            logger.error("Error taking screenshot", e);
+        }
     }
     
     /**
