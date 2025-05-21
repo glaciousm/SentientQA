@@ -201,6 +201,21 @@ public class TestCaseRepository {
                             .filter(tc -> tc.getClassName().contains(className))
                             .collect(Collectors.toList());
     }
+    
+    /**
+     * Find test cases by class name and description containing
+     *
+     * @param className the class name to search for
+     * @param descriptionPart the part of description to search for
+     * @return a list of matching test cases
+     */
+    public List<TestCase> findByClassNameAndDescriptionContaining(String className, String descriptionPart) {
+        return testCaseCache.values().stream()
+                            .filter(tc -> tc.getClassName().contains(className) && 
+                                   tc.getDescription() != null && 
+                                   tc.getDescription().contains(descriptionPart))
+                            .collect(Collectors.toList());
+    }
 
     /**
      * Find test cases by package name

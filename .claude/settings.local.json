@@ -9,7 +9,8 @@
       "Bash(javac:*)",
       "Bash(sed:*)",
       "Bash(grep:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

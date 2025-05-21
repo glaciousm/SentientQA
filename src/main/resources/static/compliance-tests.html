@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Oracle - Compliance Testing</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/compliance.css">
+</head>
+<body>
+  <!-- Full-page loading overlay -->
+  <div id="pageLoadingOverlay" class="loading-overlay">
+    <div class="loading-spinner-container">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="loading-message">Loading Compliance Testing...</p>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="index.html">
+        <i class="bi bi-radar"></i> Project Oracle
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="index.html">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard.html">Quality Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="test-management.html">Test Management</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="security-tests.html">Security Testing</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="compliance-tests.html">Compliance Testing</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="performance-tests.html">Performance Testing</a>
+          </li>
+        </ul>
+        <div class="d-flex">
+          <button id="modelStatusBtn" class="btn btn-outline-secondary" onclick="toggleModelStatus()">
+            <i class="bi bi-hdd"></i> Model Status
+          </button>
+          <button class="btn btn-outline-primary ms-2">
+            <i class="bi bi-person-circle"></i> Admin
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <h1 class="mb-0">Compliance Testing</h1>
+        <p class="text-muted">Validate code against security and regulatory standards</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <div class="btn-group" role="group">
+          <button id="refreshBtn" class="btn btn-primary">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+          </button>
+          <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#standardsInfoModal">
+            <i class="bi bi-info-circle"></i> Standards Info
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-4" id="complianceTestingTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="compliance-check-tab" data-bs-toggle="tab" data-bs-target="#compliance-check" type="button" role="tab" aria-controls="compliance-check" aria-selected="true">
+          <i class="bi bi-shield-check"></i> Compliance Check
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="compliance-audit-tab" data-bs-toggle="tab" data-bs-target="#compliance-audit" type="button" role="tab" aria-controls="compliance-audit" aria-selected="false">
+          <i class="bi bi-clipboard-check"></i> Compliance Audit
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="compliance-tests-tab" data-bs-toggle="tab" data-bs-target="#compliance-tests" type="button" role="tab" aria-controls="compliance-tests" aria-selected="false">
+          <i class="bi bi-check2-circle"></i> Compliance Tests
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="compliance-bulk-tab" data-bs-toggle="tab" data-bs-target="#compliance-bulk" type="button" role="tab" aria-controls="compliance-bulk" aria-selected="false">
+          <i class="bi bi-boxes"></i> Bulk Testing
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="complianceTestingTabContent">
+      <!-- Compliance Check Tab -->
+      <div class="tab-pane fade show active" id="compliance-check" role="tabpanel" aria-labelledby="compliance-check-tab">
+        <div class="row">
+          <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Test Compliance</h5>
+              </div>
+              <div class="card-body">
+                <form id="complianceCheckForm">
+                  <div class="mb-3">
+                    <label for="className" class="form-label">Class Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="className" placeholder="com.example.UserService" required>
+                    <div class="form-text">Fully qualified class name</div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="standard" class="form-label">Compliance Standard <span class="text-danger">*</span></label>
+                    <select class="form-select" id="standard" required>
+                      <option value="">Select a standard...</option>
+                      <option value="OWASP_TOP_10">OWASP Top 10</option>
+                      <option value="PCI_DSS">PCI DSS</option>
+                      <option value="GDPR">GDPR</option>
+                      <option value="HIPAA">HIPAA</option>
+                      <option value="SOX">SOX</option>
+                    </select>
+                    <div class="form-text">Security or regulatory standard to check against</div>
+                  </div>
+                  <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-shield-check"></i> Check Compliance
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Compliance Report</h5>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-secondary" id="exportReportBtn" disabled>
+                    <i class="bi bi-download"></i> Export Report
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary" id="generateComplianceTestsBtn" disabled>
+                    <i class="bi bi-plus"></i> Generate Tests
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="complianceReportSkeleton" style="display: none;">
+                  <div class="skeleton-loader" style="height: 60px; margin-bottom: 15px;"></div>
+                  <div class="skeleton-loader" style="height: 20px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 20px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 20px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 150px;"></div>
+                </div>
+                <div id="complianceReportContent">
+                  <div class="text-center p-5" id="noReportMessage">
+                    <div class="mb-3">
+                      <i class="bi bi-shield text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>No Compliance Report</h5>
+                    <p class="text-muted">Run a compliance check to see detailed results</p>
+                  </div>
+                  <div id="reportResults" style="display: none;">
+                    <div class="row mb-4">
+                      <div class="col-md-6">
+                        <div class="compliance-score-container">
+                          <div class="compliance-score" id="complianceScoreCircle">
+                            <span id="complianceScore">0%</span>
+                          </div>
+                          <div>
+                            <h6>Compliance Score</h6>
+                            <p class="text-muted mb-0" id="complianceStandard">Standard: N/A</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-2">
+                          <div class="violation-badge critical me-2">
+                            <span id="criticalCount">0</span>
+                          </div>
+                          <div>Critical Violations</div>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                          <div class="violation-badge high me-2">
+                            <span id="highCount">0</span>
+                          </div>
+                          <div>High Severity</div>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                          <div class="violation-badge medium me-2">
+                            <span id="mediumCount">0</span>
+                          </div>
+                          <div>Medium Severity</div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                          <div class="violation-badge low me-2">
+                            <span id="lowCount">0</span>
+                          </div>
+                          <div>Low Severity</div>
+                        </div>
+                      </div>
+                    </div>
+                    <h6>Compliance Violations</h6>
+                    <div id="violationsList" class="accordion">
+                      <!-- Will be populated by JavaScript -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compliance Audit Tab -->
+      <div class="tab-pane fade" id="compliance-audit" role="tabpanel" aria-labelledby="compliance-audit-tab">
+        <div class="row">
+          <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Run Compliance Audit</h5>
+              </div>
+              <div class="card-body">
+                <form id="complianceAuditForm">
+                  <div class="mb-3">
+                    <label for="auditClassName" class="form-label">Class Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="auditClassName" placeholder="com.example.PaymentProcessor" required>
+                    <div class="form-text">Fully qualified class name</div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Standards to Include</label>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="OWASP_TOP_10" id="standardOwasp" checked>
+                      <label class="form-check-label" for="standardOwasp">
+                        OWASP Top 10
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="PCI_DSS" id="standardPci">
+                      <label class="form-check-label" for="standardPci">
+                        PCI DSS
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="GDPR" id="standardGdpr">
+                      <label class="form-check-label" for="standardGdpr">
+                        GDPR
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="HIPAA" id="standardHipaa">
+                      <label class="form-check-label" for="standardHipaa">
+                        HIPAA
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="SOX" id="standardSox">
+                      <label class="form-check-label" for="standardSox">
+                        SOX
+                      </label>
+                    </div>
+                  </div>
+                  <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-clipboard-check"></i> Run Audit
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Audit Results</h5>
+                <button class="btn btn-sm btn-outline-secondary" id="exportAuditBtn" disabled>
+                  <i class="bi bi-download"></i> Export Audit
+                </button>
+              </div>
+              <div class="card-body">
+                <div id="auditResultsSkeleton" style="display: none;">
+                  <div class="skeleton-loader" style="height: 200px; margin-bottom: 15px;"></div>
+                  <div class="skeleton-loader" style="height: 200px; margin-bottom: 15px;"></div>
+                </div>
+                <div id="auditResultsContent">
+                  <div class="text-center p-5" id="noAuditMessage">
+                    <div class="mb-3">
+                      <i class="bi bi-clipboard-check text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>No Audit Results</h5>
+                    <p class="text-muted">Run a compliance audit to see results across standards</p>
+                  </div>
+                  <div id="auditResults" style="display: none;">
+                    <div class="alert alert-success mb-4">
+                      <h6 class="mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        <span id="auditSummary">Audit completed successfully</span>
+                      </h6>
+                    </div>
+                    
+                    <div id="standardsComparisonChart" class="mb-4">
+                      <canvas id="complianceRadarChart" style="height: 300px;"></canvas>
+                    </div>
+                    
+                    <h6>Compliance by Standard</h6>
+                    <div id="complianceByStandard" class="accordion">
+                      <!-- Will be populated by JavaScript -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compliance Tests Tab -->
+      <div class="tab-pane fade" id="compliance-tests" role="tabpanel" aria-labelledby="compliance-tests-tab">
+        <div class="row">
+          <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Generate Compliance Tests</h5>
+              </div>
+              <div class="card-body">
+                <form id="generateTestsForm">
+                  <div class="mb-3">
+                    <label for="testClassName" class="form-label">Class Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="testClassName" placeholder="com.example.MyClass" required>
+                    <div class="form-text">Fully qualified class name</div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="testStandard" class="form-label">Compliance Standard <span class="text-danger">*</span></label>
+                    <select class="form-select" id="testStandard" required>
+                      <option value="">Select a standard...</option>
+                      <option value="OWASP_TOP_10">OWASP Top 10</option>
+                      <option value="PCI_DSS">PCI DSS</option>
+                      <option value="GDPR">GDPR</option>
+                      <option value="HIPAA">HIPAA</option>
+                      <option value="SOX">SOX</option>
+                    </select>
+                    <div class="form-text">Standard to generate tests for</div>
+                  </div>
+                  <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-check2-circle"></i> Generate Compliance Tests
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Generated Tests</h5>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-secondary" id="exportTestsBtn" disabled>
+                    <i class="bi bi-download"></i> Export
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary" id="runAllTestsBtn" disabled>
+                    <i class="bi bi-play"></i> Run All
+                  </button>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div id="generatedTestsSkeleton" style="display: none;" class="p-3">
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 50px;"></div>
+                </div>
+                <div id="generatedTestsContent">
+                  <div class="text-center p-5" id="noTestsMessage">
+                    <div class="mb-3">
+                      <i class="bi bi-check2-circle text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>No Compliance Tests</h5>
+                    <p class="text-muted">Generate compliance tests to validate standards</p>
+                  </div>
+                  <div id="testsList" style="display: none;">
+                    <div class="list-group list-group-flush" id="complianceTestsList">
+                      <!-- Will be populated by JavaScript -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Bulk Testing Tab -->
+      <div class="tab-pane fade" id="compliance-bulk" role="tabpanel" aria-labelledby="compliance-bulk-tab">
+        <div class="row">
+          <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">Bulk Compliance Testing</h5>
+              </div>
+              <div class="card-body">
+                <form id="bulkTestingForm">
+                  <div class="mb-3">
+                    <label for="bulkClassNames" class="form-label">Class Names <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="bulkClassNames" rows="5" placeholder="com.example.ServiceOne&#10;com.example.ServiceTwo&#10;com.example.ServiceThree" required></textarea>
+                    <div class="form-text">Enter fully qualified class names, one per line</div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="bulkTestType" class="form-label">Test Type <span class="text-danger">*</span></label>
+                    <select class="form-select" id="bulkTestType" required>
+                      <option value="standard">Single Standard</option>
+                      <option value="audit">Multi-Standard Audit</option>
+                    </select>
+                  </div>
+                  <div id="bulkStandardSelector" class="mb-3">
+                    <label for="bulkStandard" class="form-label">Compliance Standard <span class="text-danger">*</span></label>
+                    <select class="form-select" id="bulkStandard">
+                      <option value="OWASP_TOP_10">OWASP Top 10</option>
+                      <option value="PCI_DSS">PCI DSS</option>
+                      <option value="GDPR">GDPR</option>
+                      <option value="HIPAA">HIPAA</option>
+                      <option value="SOX">SOX</option>
+                    </select>
+                  </div>
+                  <div id="bulkStandardsSelector" class="mb-3" style="display: none;">
+                    <label class="form-label">Standards to Include</label>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="OWASP_TOP_10" id="bulkStandardOwasp" checked>
+                      <label class="form-check-label" for="bulkStandardOwasp">
+                        OWASP Top 10
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="PCI_DSS" id="bulkStandardPci">
+                      <label class="form-check-label" for="bulkStandardPci">
+                        PCI DSS
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="GDPR" id="bulkStandardGdpr">
+                      <label class="form-check-label" for="bulkStandardGdpr">
+                        GDPR
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="HIPAA" id="bulkStandardHipaa">
+                      <label class="form-check-label" for="bulkStandardHipaa">
+                        HIPAA
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="SOX" id="bulkStandardSox">
+                      <label class="form-check-label" for="bulkStandardSox">
+                        SOX
+                      </label>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="bulkAction" class="form-label">Action <span class="text-danger">*</span></label>
+                    <select class="form-select" id="bulkAction" required>
+                      <option value="test">Run Compliance Check</option>
+                      <option value="generate">Generate Compliance Tests</option>
+                    </select>
+                  </div>
+                  <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-boxes"></i> Run Bulk Operation
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Bulk Operation Results</h5>
+                <button class="btn btn-sm btn-outline-secondary" id="exportBulkResultsBtn" disabled>
+                  <i class="bi bi-download"></i> Export Results
+                </button>
+              </div>
+              <div class="card-body">
+                <div id="bulkResultsSkeleton" style="display: none;">
+                  <div class="skeleton-loader" style="height: 30px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 30px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 30px; margin-bottom: 10px;"></div>
+                  <div class="skeleton-loader" style="height: 150px; margin-bottom: 10px;"></div>
+                </div>
+                <div id="bulkResultsContent">
+                  <div class="text-center p-5" id="noBulkResultsMessage">
+                    <div class="mb-3">
+                      <i class="bi bi-boxes text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>No Bulk Testing Results</h5>
+                    <p class="text-muted">Run a bulk operation to see results here</p>
+                  </div>
+                  <div id="bulkResultsList" style="display: none;">
+                    <!-- Will be populated by JavaScript -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Standards Info Modal -->
+  <div class="modal fade" id="standardsInfoModal" tabindex="-1" aria-labelledby="standardsInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="standardsInfoModalLabel">Compliance Standards Information</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="accordion" id="standardsAccordion">
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingOWASP">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOWASP" aria-expanded="true" aria-controls="collapseOWASP">
+                  OWASP Top 10
+                </button>
+              </h2>
+              <div id="collapseOWASP" class="accordion-collapse collapse show" aria-labelledby="headingOWASP" data-bs-parent="#standardsAccordion">
+                <div class="accordion-body">
+                  <p>The OWASP Top 10 is a regularly updated list of the most critical web application security risks. It provides awareness about common vulnerabilities and guides developers to build more secure applications.</p>
+                  <h6>Key Rules:</h6>
+                  <ul>
+                    <li><strong>A1:2017 - Injection</strong>: Prevent SQL, NoSQL, OS, and LDAP injection flaws</li>
+                    <li><strong>A2:2017 - Broken Authentication</strong>: Implement proper session management and authentication</li>
+                    <li><strong>A3:2017 - Sensitive Data Exposure</strong>: Protect sensitive data with encryption</li>
+                    <li><strong>A7:2017 - Cross-Site Scripting (XSS)</strong>: Validate and sanitize user input</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingPCI">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePCI" aria-expanded="false" aria-controls="collapsePCI">
+                  PCI DSS
+                </button>
+              </h2>
+              <div id="collapsePCI" class="accordion-collapse collapse" aria-labelledby="headingPCI" data-bs-parent="#standardsAccordion">
+                <div class="accordion-body">
+                  <p>The Payment Card Industry Data Security Standard (PCI DSS) is a set of security requirements designed to ensure that all companies that process, store, or transmit credit card information maintain a secure environment.</p>
+                  <h6>Key Rules:</h6>
+                  <ul>
+                    <li><strong>Requirement 3</strong>: Protect stored cardholder data with encryption</li>
+                    <li><strong>Requirement 6.5</strong>: Address common coding vulnerabilities</li>
+                    <li><strong>Requirement 6.6</strong>: Protect web applications against attacks</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingGDPR">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGDPR" aria-expanded="false" aria-controls="collapseGDPR">
+                  GDPR
+                </button>
+              </h2>
+              <div id="collapseGDPR" class="accordion-collapse collapse" aria-labelledby="headingGDPR" data-bs-parent="#standardsAccordion">
+                <div class="accordion-body">
+                  <p>The General Data Protection Regulation (GDPR) is a regulation in EU law on data protection and privacy for all individuals within the European Union and the European Economic Area.</p>
+                  <h6>Key Rules:</h6>
+                  <ul>
+                    <li><strong>Article 32</strong>: Implement appropriate security measures</li>
+                    <li><strong>Data Minimization</strong>: Collect only necessary data</li>
+                    <li><strong>Right to be Forgotten</strong>: Support data deletion</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingHIPAA">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHIPAA" aria-expanded="false" aria-controls="collapseHIPAA">
+                  HIPAA
+                </button>
+              </h2>
+              <div id="collapseHIPAA" class="accordion-collapse collapse" aria-labelledby="headingHIPAA" data-bs-parent="#standardsAccordion">
+                <div class="accordion-body">
+                  <p>The Health Insurance Portability and Accountability Act (HIPAA) provides data privacy and security provisions for safeguarding medical information in the United States.</p>
+                  <h6>Key Rules:</h6>
+                  <ul>
+                    <li><strong>Privacy Rule</strong>: Protect all individually identifiable health information</li>
+                    <li><strong>Security Rule</strong>: Ensure confidentiality, integrity, and availability of PHI</li>
+                    <li><strong>Breach Notification Rule</strong>: Implement procedures for breach reporting</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingSOX">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSOX" aria-expanded="false" aria-controls="collapseSOX">
+                  SOX
+                </button>
+              </h2>
+              <div id="collapseSOX" class="accordion-collapse collapse" aria-labelledby="headingSOX" data-bs-parent="#standardsAccordion">
+                <div class="accordion-body">
+                  <p>The Sarbanes-Oxley Act (SOX) is a United States federal law that mandates certain practices in financial record keeping and reporting for corporations.</p>
+                  <h6>Key Rules:</h6>
+                  <ul>
+                    <li><strong>Section 302</strong>: Implement internal controls for financial reports</li>
+                    <li><strong>Section 404</strong>: Include assessment of internal controls in reports</li>
+                    <li><strong>Section 409</strong>: Ensure timely disclosure of information</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Details Modal -->
+  <div class="modal fade" id="testDetailsModal" tabindex="-1" aria-labelledby="testDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="testDetailsModalLabel">Compliance Test Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="testDetailsContent">
+            <!-- Will be populated by JavaScript -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="runTestBtn">Run Test</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Status Display -->
+  <div id="modelStatusContainer" class="position-fixed bottom-0 end-0 m-3 p-3 bg-white shadow-sm rounded" style="z-index: 1000; display: none;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">AI Model Status</h6>
+      <button type="button" class="btn-close" aria-label="Close" onclick="toggleModelStatus()"></button>
+    </div>
+    <div id="modelStatusContent">
+      <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <span>Language Model</span>
+          <span id="languageModelStatus" class="model-loading-status model-status-not-loaded">NOT LOADED</span>
+        </div>
+        <div class="progress mt-1" style="height: 4px;">
+          <div id="languageModelProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <span>Embeddings Model</span>
+          <span id="embeddingsModelStatus" class="model-loading-status model-status-not-loaded">NOT LOADED</span>
+        </div>
+        <div class="progress mt-1" style="height: 4px;">
+          <div id="embeddingsModelProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+        </div>
+      </div>
+      <button id="refreshModelStatusBtn" class="btn btn-sm btn-outline-primary mt-2 w-100">Refresh Status</button>
+    </div>
+  </div>
+
+  <!-- JavaScript Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Application JavaScript -->
+  <script src="js/compliance.js"></script>
+</body>
+</html>

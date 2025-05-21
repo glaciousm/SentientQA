@@ -1,0 +1,6 @@
+-XDjavac.lint=unchecked,deprecation
+-classpath
+.:/tmp/empty
+/mnt/c/Users/mmamouze/IdeaProjects/SentinelQA/src/main/java/com/projectoracle/service/reporting/ComplianceReportGenerator.java
+-d
+/tmp

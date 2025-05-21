@@ -39,6 +39,13 @@ public class TestCase {
     private String generationPrompt;
     private TestExecutionResult lastExecutionResult;
     
+    // Execution related fields
+    private LocalDateTime lastExecuted;
+    private Long executionTime;
+    private String executionOutput;
+    private String errorMessage;
+    private Boolean runningInCi;
+    
     // Knowledge integration fields
     private List<KnowledgeSource> knowledgeSources;
     private Double knowledgeEnhancementScore; // How much the test was improved by knowledge integration
@@ -72,6 +79,7 @@ public class TestCase {
         GENERATED,
         REVIEWED,
         APPROVED,
+        RUNNING,
         EXECUTING,
         PASSED,
         FAILED,
@@ -101,6 +109,11 @@ public class TestCase {
                 .lastExecutedAt(this.lastExecutedAt)
                 .confidenceScore(this.confidenceScore)
                 .generationPrompt(this.generationPrompt)
+                .lastExecuted(this.lastExecuted)
+                .executionTime(this.executionTime)
+                .executionOutput(this.executionOutput)
+                .errorMessage(this.errorMessage)
+                .runningInCi(this.runningInCi)
                 .knowledgeEnhancementScore(this.knowledgeEnhancementScore)
                 .build();
         
