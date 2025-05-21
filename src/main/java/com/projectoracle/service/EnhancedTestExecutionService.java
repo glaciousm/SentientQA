@@ -2,14 +2,17 @@ package com.projectoracle.service;
 
 import com.projectoracle.model.TestCase;
 import com.projectoracle.model.TestCase.TestExecutionResult;
+import com.projectoracle.model.TestCase.TestStatus;
 import com.projectoracle.repository.TestCaseRepository;
 import com.projectoracle.config.AIConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Qualifier;
 
@@ -68,8 +71,27 @@ public class EnhancedTestExecutionService {
     private final Map<UUID, Thread> activeExecutions = new ConcurrentHashMap<>();
     
     /**
-     * Execute a test case.
-     *
+     * Execute a test case directly by TestCase object
+     * 
+     * @param testCase the test case to execute
+     * @return a CompletableFuture with the executed test case
+     */
+    public CompletableFuture<TestCase> executeTest(TestCase testCase) {
+        if (testCase == null) {
+            throw new IllegalArgumentException("Test case cannot be null");
+        }
+        
+        // Mark as executing
+        testCase.setStatus(TestStatus.EXECUTING);
+        testCaseRepository.save(testCase);
+        
+        // Execute the test using the ID
+        return executeTest(testCase.getId());
+    }
+    
+    /**
+     * Execute a test case by ID
+     * 
      * @param testCaseId the ID of the test case to execute
      * @return a CompletableFuture that will complete when the test execution is done
      * @throws IllegalArgumentException if the test case doesn't exist or is invalid

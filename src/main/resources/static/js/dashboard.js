@@ -233,16 +233,46 @@ function updateModelStatusUI(status, statusElement, progressElement) {
 
 // Load dashboard summary
 function loadDashboardSummary() {
-  fetch(`${API_BASE_URL}/quality-dashboard/summary`)
-    .then(response => response.json())
-    .then(data => {
-      updateDashboardSummary(data);
-    })
-    .catch(error => {
-      console.error('Error loading dashboard summary:', error);
-      // Use mock data for demo
-      updateDashboardSummary(getMockDashboardSummary());
-    });
+  // Check if we have real test data mode enabled
+  const useRealData = localStorage.getItem('useRealData') === 'true';
+  
+  if (useRealData) {
+    fetch(`${API_BASE_URL}/quality-dashboard/summary`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Store that we got real data
+        localStorage.setItem('hasRealData', 'true');
+        
+        // Show notification if this is the first real data
+        if (localStorage.getItem('showedRealDataNotification') !== 'true') {
+          showNotification('Using real test data! Mock data disabled.');
+          localStorage.setItem('showedRealDataNotification', 'true');
+        }
+        
+        updateDashboardSummary(data);
+      })
+      .catch(error => {
+        console.error('Error loading dashboard summary:', error);
+        
+        // If we tried to use real data but failed, switch back to mock
+        localStorage.setItem('hasRealData', 'false');
+        
+        // Show notification about fallback
+        showNotification('Failed to load real data. Using mock data instead.', 'warning');
+        
+        // Use mock data for demo
+        updateDashboardSummary(getMockDashboardSummary());
+      });
+  } else {
+    // Explicitly using mock data mode
+    console.log('Using mock dashboard data (real data mode is disabled)');
+    updateDashboardSummary(getMockDashboardSummary());
+  }
 }
 
 // Update dashboard summary with data

@@ -2,17 +2,27 @@ package com.projectoracle.rest;
 
 import com.projectoracle.model.TestCase;
 import com.projectoracle.repository.TestCaseRepository;
+import com.projectoracle.service.CodeAnalysisService;
 import com.projectoracle.service.EnhancedTestExecutionService;
+import com.projectoracle.service.MethodInfo;
+import com.projectoracle.service.TestGenerationService;
 
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * REST controller for test case management and execution.
@@ -28,6 +38,12 @@ public class TestController {
 
     @Autowired
     private EnhancedTestExecutionService testExecutionService;
+    
+    @Autowired
+    private CodeAnalysisService codeAnalysisService;
+    
+    @Autowired
+    private TestGenerationService testGenerationService;
 
     /**
      * Get all test cases
@@ -103,20 +119,112 @@ public class TestController {
         }
         
         logger.info("Deleting test case: {}", id);
-
-        // Check if test case exists
-        TestCase testCase = testCaseRepository.findById(id);
-        if (testCase == null) {
-            logger.warn("Test case not found for deletion: {}", id);
-            return ResponseEntity.notFound().build();
-        }
-
+        testCaseRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+    
+    /**
+     * Scan code and generate real tests
+     * 
+     * @param sourcePath Path to the source code directory or file
+     * @param maxTests Maximum number of tests to generate (default 10)
+     * @return List of generated and executed test cases
+     */
+    @PostMapping("/scan")
+    public ResponseEntity<List<TestCase>> scanCodeAndGenerateTests(
+            @RequestParam String sourcePath,
+            @RequestParam(defaultValue = "10") int maxTests) {
+        
+        logger.info("Scanning code at path: {}, max tests: {}", sourcePath, maxTests);
+        
         try {
-            testCaseRepository.deleteById(id);
-            return ResponseEntity.ok().build();
+            Path path = Paths.get(sourcePath);
+            if (!Files.exists(path)) {
+                logger.error("Source path does not exist: {}", sourcePath);
+                return ResponseEntity.badRequest().body(List.of());
+            }
+            
+            // Find Java files to analyze
+            List<File> javaFiles;
+            if (Files.isDirectory(path)) {
+                // Get all Java files recursively
+                javaFiles = Files.walk(path)
+                    .filter(p -> p.toString().endsWith(".java"))
+                    .map(Path::toFile)
+                    .collect(Collectors.toList());
+            } else if (sourcePath.endsWith(".java")) {
+                // Single Java file
+                javaFiles = List.of(path.toFile());
+            } else {
+                logger.error("Source path is not a Java file or directory: {}", sourcePath);
+                return ResponseEntity.badRequest().body(List.of());
+            }
+            
+            logger.info("Found {} Java files to analyze", javaFiles.size());
+            
+            // Analyze files to extract methods
+            List<MethodInfo> methods = new ArrayList<>();
+            for (File file : javaFiles) {
+                try {
+                    Map<String, MethodInfo> methodMap = codeAnalysisService.analyzeJavaFile(file.toPath());
+                    methods.addAll(methodMap.values());
+                } catch (Exception e) {
+                    logger.warn("Error analyzing file {}: {}", file.getName(), e.getMessage());
+                    // Continue with other files
+                }
+            }
+            
+            logger.info("Extracted {} methods for test generation", methods.size());
+            
+            // Limit the number of methods to process
+            int methodsToProcess = Math.min(methods.size(), maxTests);
+            methods = methods.subList(0, methodsToProcess);
+            
+            // Generate tests for each method
+            List<TestCase> generatedTests = new ArrayList<>();
+            for (MethodInfo method : methods) {
+                try {
+                    TestCase test = testGenerationService.generateTestForMethod(method);
+                    if (test != null) {
+                        generatedTests.add(test);
+                    }
+                } catch (Exception e) {
+                    logger.warn("Error generating test for method {}: {}", 
+                        method.getMethodName(), e.getMessage());
+                    // Continue with other methods
+                }
+            }
+            
+            logger.info("Generated {} test cases", generatedTests.size());
+            
+            // Save tests to repository
+            List<TestCase> savedTests = new ArrayList<>();
+            for (TestCase test : generatedTests) {
+                try {
+                    TestCase savedTest = testCaseRepository.save(test);
+                    savedTests.add(savedTest);
+                } catch (Exception e) {
+                    logger.warn("Error saving test: {}", e.getMessage());
+                    // Continue with other tests
+                }
+            }
+            
+            // Execute the tests
+            for (TestCase test : savedTests) {
+                try {
+                    CompletableFuture.runAsync(() -> {
+                        testExecutionService.executeTest(test.getId());
+                    });
+                } catch (Exception e) {
+                    logger.warn("Error executing test: {}", e.getMessage());
+                    // Continue with other tests
+                }
+            }
+            
+            return ResponseEntity.ok(savedTests);
         } catch (Exception e) {
-            logger.error("Error deleting test case: {}", e.getMessage(), e);
-            throw e; // Global handler will catch this
+            logger.error("Error scanning code: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(List.of());
         }
     }
 

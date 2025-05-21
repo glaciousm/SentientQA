@@ -12,7 +12,8 @@
       "Bash(mv:*)",
       "Bash(find:*)",
       "Bash(cat:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(sudo mvn:*)"
     ],
     "deny": []
   }
