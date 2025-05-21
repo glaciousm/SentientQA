@@ -16,6 +16,7 @@ import com.projectoracle.service.ModelQuantizationService.QuantizationLevel;
 
 import java.nio.file.Files;
 
+import java.nio.file.StandardCopyOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -207,6 +208,18 @@ public class AIModelService {
             Path modelDir = aiConfig.getModelPath(modelName);
             Path modelFile = modelDir.resolve("pytorch_model.bin");
             
+            // Also create a symlink or copy with .pt extension for DJL compatibility
+            Path ptModelFile = modelDir.resolve(modelName + ".pt");
+            if (!Files.exists(ptModelFile)) {
+                logger.info("Creating .pt model file for DJL compatibility at {}", ptModelFile);
+                try {
+                    Files.copy(modelFile, ptModelFile, StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException e) {
+                    logger.warn("Failed to create .pt model file: {}", e.getMessage());
+                    // Continue execution, as the original pytorch_model.bin might still work
+                }
+            }
+            
             if (!Files.exists(modelFile)) {
                 throw new ModelNotFoundException("Required model file not found: " + modelFile);
             }
@@ -257,9 +270,11 @@ public class AIModelService {
             } else {
                 // Use regular model (FP32)
                 logger.info("Using non-quantized model (FP32) at {}", modelDir);
+                // Make sure to include both the model directory and the specific model file
                 criteriaBuilder = Criteria.builder()
                         .setTypes(String.class, String.class)
                         .optModelPath(modelDir)
+                        .optModelName(modelName + ".pt") // Use the .pt file explicitly
                         .optEngine("PyTorch")
                         .optTranslator(new TextGenerationTranslator(1024));
             }
@@ -362,6 +377,18 @@ public class AIModelService {
                 throw new ModelNotFoundException("Required embeddings model file not found: " + modelFile);
             }
             
+            // Also create a symlink or copy with .pt extension for DJL compatibility
+            Path ptModelFile = modelDir.resolve(modelName + ".pt");
+            if (!Files.exists(ptModelFile)) {
+                logger.info("Creating .pt model file for embeddings DJL compatibility at {}", ptModelFile);
+                try {
+                    Files.copy(modelFile, ptModelFile, StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException e) {
+                    logger.warn("Failed to create .pt model file: {}", e.getMessage());
+                    // Continue execution, as the original pytorch_model.bin might still work
+                }
+            }
+            
             Path configFile = modelDir.resolve("config.json");
             if (!Files.exists(configFile)) {
                 logger.warn("Embeddings model config file not found: {}. This may cause issues.", configFile);
@@ -371,10 +398,11 @@ public class AIModelService {
             Criteria<String, String> criteria = Criteria.builder()
                                                         .setTypes(String.class, String.class)
                                                         .optModelPath(modelDir)
+                                                        .optModelName(modelName + ".pt") // Use the .pt file explicitly
                                                         .optEngine("PyTorch")
                                                         .build();
 
-            logger.info("Loading embeddings model from path: {}", modelDir);
+            logger.info("Loading embeddings model from path: {}, model file: {}", modelDir, modelName + ".pt");
             
             // Load the model
             ZooModel<String, String> model = ModelZoo.loadModel(criteria);
