@@ -1,28 +1,38 @@
 package com.projectoracle.rest;
 
 import com.projectoracle.model.TestCase;
+import com.projectoracle.model.TestExecutionHistory.TestExecution;
 import com.projectoracle.repository.TestCaseRepository;
 import com.projectoracle.service.CodeAnalysisService;
 import com.projectoracle.service.EnhancedTestExecutionService;
 import com.projectoracle.service.MethodInfo;
 import com.projectoracle.service.TestGenerationService;
-
-import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST controller for test case management and execution.
@@ -52,6 +62,51 @@ public class TestController {
     public ResponseEntity<List<TestCase>> getAllTests() {
         logger.info("Getting all test cases");
         return ResponseEntity.ok(testCaseRepository.findAll());
+    }
+
+    /**
+     * Get recent test executions
+     * 
+     * @param limit Maximum number of executions to return (default 5)
+     * @return List of recent test executions
+     */
+    @GetMapping("/recent-executions")
+    public ResponseEntity<List<TestExecution>> getRecentExecutions(
+            @RequestParam(defaultValue = "5") int limit) {
+        logger.info("Getting recent test executions, limit: {}", limit);
+        
+        // In a real implementation, we would fetch from a repository or service
+        // For now, we'll return mock data to satisfy the dashboard.js call
+        List<TestExecution> recentExecutions = new ArrayList<>();
+        
+        // Generate some mock test executions
+        String[] testNames = {"loginTest", "dataProcessingTest", "validationTest", "apiIntegrationTest", "databaseTest"};
+        
+        for (int i = 0; i < Math.min(limit, testNames.length); i++) {
+            UUID executionId = UUID.randomUUID();
+            LocalDateTime executedAt = LocalDateTime.now().minusMinutes(i * 10);
+            boolean successful = Math.random() > 0.3; // 70% pass rate
+            long executionTimeMs = (long) (Math.random() * 3000); // 0-3 seconds
+            
+            TestExecution execution = new TestExecution();
+            execution.setId(executionId);
+            execution.setExecutedAt(executedAt);
+            execution.setSuccessful(successful);
+            execution.setExecutionTimeMs(executionTimeMs);
+            
+            if (!successful) {
+                execution.setErrorMessage("Test assertion failed: expected value did not match actual value");
+                execution.setStackTrace("at com.projectoracle.test.TestClass.testMethod(" + testNames[i] + ".java:42)");
+            }
+            
+            execution.setCodeVersion("main-" + executedAt.toEpochSecond(ZoneOffset.UTC));
+            execution.setEnvironment(new HashMap<>());
+            execution.setChangedFiles(new ArrayList<>());
+            
+            recentExecutions.add(execution);
+        }
+        
+        return ResponseEntity.ok(recentExecutions);
     }
 
     /**
