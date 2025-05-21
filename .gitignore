@@ -72,3 +72,4 @@ tmp/
 # Application specific
 application-local.properties
 application-dev.properties
+/data/sentinelqa.mv.db

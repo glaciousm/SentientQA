@@ -237,7 +237,8 @@ function loadDashboardSummary() {
   const useRealData = localStorage.getItem('useRealData') === 'true';
   
   if (useRealData) {
-    fetch(`${API_BASE_URL}/quality-dashboard/summary`)
+    // Add the useRealData parameter to signal we want real data
+    fetch(`${API_BASE_URL}/quality-dashboard/summary?useRealData=true`)
       .then(response => {
         if (!response.ok) {
           throw new Error(`API returned ${response.status}`);
@@ -426,7 +427,8 @@ function updateTestStatusChart(data) {
 
 // Load failure trends
 function loadFailureTrends(days) {
-  fetch(`${API_BASE_URL}/quality-dashboard/trends?timeframe=${days}`)
+  const useRealData = localStorage.getItem('useRealData') === 'true';
+  fetch(`${API_BASE_URL}/quality-dashboard/trends?timeframe=${days}${useRealData ? '&useRealData=true' : ''}`)
     .then(response => response.json())
     .then(data => {
       updateFailureTrendChart(data);
@@ -549,7 +551,8 @@ function updateFailureTrendChart(trendData) {
 
 // Load category health
 function loadCategoryHealth() {
-  fetch(`${API_BASE_URL}/quality-dashboard/health-by-category`)
+  const useRealData = localStorage.getItem('useRealData') === 'true';
+  fetch(`${API_BASE_URL}/quality-dashboard/health-by-category${useRealData ? '?useRealData=true' : ''}`)
     .then(response => response.json())
     .then(data => {
       updateCategoryHealth(data);
@@ -613,7 +616,8 @@ function updateCategoryHealth(categoryData) {
 
 // Load most frequently failing tests
 function loadMostFailingTests() {
-  fetch(`${API_BASE_URL}/quality-dashboard/most-failing?limit=5`)
+  const useRealData = localStorage.getItem('useRealData') === 'true';
+  fetch(`${API_BASE_URL}/quality-dashboard/most-failing?limit=5${useRealData ? '&useRealData=true' : ''}`)
     .then(response => response.json())
     .then(data => {
       updateMostFailingTests(data);
@@ -688,7 +692,8 @@ function updateMostFailingTests(failingTests) {
 
 // Load flaky tests
 function loadFlakyTests() {
-  fetch(`${API_BASE_URL}/quality-dashboard/flaky-tests`)
+  const useRealData = localStorage.getItem('useRealData') === 'true';
+  fetch(`${API_BASE_URL}/quality-dashboard/flaky-tests${useRealData ? '?useRealData=true' : ''}`)
     .then(response => response.json())
     .then(data => {
       updateFlakyTests(data);
@@ -771,7 +776,8 @@ function updateFlakyTests(flakyTests) {
 
 // Load all flaky tests for the modal
 function loadAllFlakyTests() {
-  fetch(`${API_BASE_URL}/quality-dashboard/flaky-tests`)
+  const useRealData = localStorage.getItem('useRealData') === 'true';
+  fetch(`${API_BASE_URL}/quality-dashboard/flaky-tests${useRealData ? '?useRealData=true' : ''}`)
     .then(response => response.json())
     .then(data => {
       showAllFlakyTestsModal(data);
@@ -866,7 +872,8 @@ public void ${test.methodName}() {
 
 // Load recent executions
 function loadRecentExecutions() {
-  fetch(`${API_BASE_URL}/tests/recent-executions?limit=5`)
+  const useRealData = localStorage.getItem('useRealData') === 'true';
+  fetch(`${API_BASE_URL}/tests/recent-executions?limit=5${useRealData ? '&useRealData=true' : ''}`)
     .then(response => response.json())
     .then(data => {
       updateRecentExecutions(data);

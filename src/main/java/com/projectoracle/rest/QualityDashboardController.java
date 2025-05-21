@@ -32,13 +32,15 @@ public class QualityDashboardController {
     /**
      * Get dashboard summary data
      * 
+     * @param useRealData Whether to use real data or allow fallback to mock data
      * @return Dashboard summary metrics
      */
     @GetMapping("/summary")
-    public ResponseEntity<DashboardSummary> getDashboardSummary() {
-        log.info("Getting dashboard summary");
+    public ResponseEntity<DashboardSummary> getDashboardSummary(
+            @RequestParam(required = false, defaultValue = "false") boolean useRealData) {
+        log.info("Getting dashboard summary, useRealData={}", useRealData);
         
-        DashboardSummary summary = qualityMetricsService.getDashboardSummary();
+        DashboardSummary summary = qualityMetricsService.getDashboardSummary(useRealData);
         return ResponseEntity.ok(summary);
     }
     
@@ -46,44 +48,50 @@ public class QualityDashboardController {
      * Get failure trends data
      * 
      * @param timeframe Timeframe in days (7, 30, 90)
+     * @param useRealData Whether to use real data or allow fallback to mock data
      * @return List of trend points
      */
     @GetMapping("/trends")
     public ResponseEntity<List<TrendPoint>> getFailureTrends(
-            @RequestParam(defaultValue = "30") int timeframe) {
+            @RequestParam(defaultValue = "30") int timeframe,
+            @RequestParam(required = false, defaultValue = "false") boolean useRealData) {
         
-        log.info("Getting failure trends for {} days", timeframe);
+        log.info("Getting failure trends for {} days, useRealData={}", timeframe, useRealData);
         
         // Limit timeframe to supported values
         int validTimeframe = validateTimeframe(timeframe);
         
-        List<TrendPoint> trends = qualityMetricsService.getFailureTrends(validTimeframe);
+        List<TrendPoint> trends = qualityMetricsService.getFailureTrends(validTimeframe, useRealData);
         return ResponseEntity.ok(trends);
     }
     
     /**
      * Get flaky test report
      * 
+     * @param useRealData Whether to use real data or allow fallback to mock data
      * @return List of flaky tests with details
      */
     @GetMapping("/flaky-tests")
-    public ResponseEntity<List<FlakyTestInfo>> getFlakyTestReport() {
-        log.info("Getting flaky test report");
+    public ResponseEntity<List<FlakyTestInfo>> getFlakyTestReport(
+            @RequestParam(required = false, defaultValue = "false") boolean useRealData) {
+        log.info("Getting flaky test report, useRealData={}", useRealData);
         
-        List<FlakyTestInfo> flakyTests = qualityMetricsService.getFlakyTestReport();
+        List<FlakyTestInfo> flakyTests = qualityMetricsService.getFlakyTestReport(useRealData);
         return ResponseEntity.ok(flakyTests);
     }
     
     /**
      * Get test health metrics by category
      * 
+     * @param useRealData Whether to use real data or allow fallback to mock data
      * @return Map of test categories to health metrics
      */
     @GetMapping("/health-by-category")
-    public ResponseEntity<Map<String, CategoryHealth>> getHealthByCategory() {
-        log.info("Getting health metrics by category");
+    public ResponseEntity<Map<String, CategoryHealth>> getHealthByCategory(
+            @RequestParam(required = false, defaultValue = "false") boolean useRealData) {
+        log.info("Getting health metrics by category, useRealData={}", useRealData);
         
-        Map<String, CategoryHealth> healthByCategory = qualityMetricsService.getHealthByCategory();
+        Map<String, CategoryHealth> healthByCategory = qualityMetricsService.getHealthByCategory(useRealData);
         return ResponseEntity.ok(healthByCategory);
     }
     
@@ -91,18 +99,20 @@ public class QualityDashboardController {
      * Get most frequently failing tests
      * 
      * @param limit Maximum number of tests to return
+     * @param useRealData Whether to use real data or allow fallback to mock data
      * @return List of tests with highest failure counts
      */
     @GetMapping("/most-failing")
     public ResponseEntity<List<FailureFrequency>> getMostFrequentlyFailingTests(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false, defaultValue = "false") boolean useRealData) {
         
-        log.info("Getting most frequently failing tests, limit: {}", limit);
+        log.info("Getting most frequently failing tests, limit: {}, useRealData={}", limit, useRealData);
         
         // Ensure limit is reasonable
         int validLimit = Math.min(50, Math.max(1, limit));
         
-        List<FailureFrequency> failingTests = qualityMetricsService.getMostFrequentlyFailingTests(validLimit);
+        List<FailureFrequency> failingTests = qualityMetricsService.getMostFrequentlyFailingTests(validLimit, useRealData);
         return ResponseEntity.ok(failingTests);
     }
     

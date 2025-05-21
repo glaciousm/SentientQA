@@ -36,10 +36,11 @@ public class QualityMetricsService {
     /**
      * Get dashboard summary data
      * 
+     * @param forceRealData Whether to only use real data or allow mock data fallback
      * @return Summary metrics for the dashboard
      */
-    public DashboardSummary getDashboardSummary() {
-        log.info("Generating dashboard summary");
+    public DashboardSummary getDashboardSummary(boolean forceRealData) {
+        log.info("Generating dashboard summary, forceRealData={}", forceRealData);
         
         List<TestCase> allTests = testCaseRepository.findAll();
         
@@ -61,11 +62,36 @@ public class QualityMetricsService {
                 .healthScore(calculateHealthScore(allTests))
                 .build();
         } else {
-            log.info("No real test data found, using mock data for dashboard summary");
-            
-            // Return mock data
-            return getDashboardSummaryMock();
+            if (forceRealData) {
+                log.info("No real test data found, but real data was requested. Returning empty summary.");
+                
+                // Return empty summary if real data was explicitly requested
+                return DashboardSummary.builder()
+                    .totalTests(0)
+                    .passingTests(0)
+                    .failingTests(0)
+                    .flakyTests(0)
+                    .averagePassRate(0.0)
+                    .testCoverage(0.0)
+                    .testTrend(TestTrend.STABLE)
+                    .healthScore(0)
+                    .build();
+            } else {
+                log.info("No real test data found, using mock data for dashboard summary");
+                
+                // Return mock data
+                return getDashboardSummaryMock();
+            }
         }
+    }
+    
+    /**
+     * Get dashboard summary data - legacy method for backward compatibility
+     * 
+     * @return Summary metrics for the dashboard
+     */
+    public DashboardSummary getDashboardSummary() {
+        return getDashboardSummary(false);
     }
     
     /**
@@ -89,29 +115,99 @@ public class QualityMetricsService {
      * Get detailed failure trend data
      * 
      * @param timeframe Timeframe in days (7, 30, 90)
+     * @param forceRealData Whether to only use real data or allow mock data fallback
+     * @return List of failure trend points
+     */
+    public List<TrendPoint> getFailureTrends(int timeframe, boolean forceRealData) {
+        log.info("Generating failure trends for {} days, forceRealData={}", timeframe, forceRealData);
+        
+        List<TestCase> allTests = testCaseRepository.findAll();
+        boolean hasRealData = !allTests.isEmpty();
+        
+        if (hasRealData) {
+            // In a real implementation, we would analyze test history from database
+            // For now, we'll create some semi-realistic data based on tests we have
+            log.info("Using real test data for failure trends (found {} tests)", allTests.size());
+            return generateTrendsFromRealTests(allTests, timeframe);
+        } else if (forceRealData) {
+            log.info("No real test data found, but real data was requested. Returning empty trends.");
+            return List.of();
+        } else {
+            log.info("No real test data found, using mock data for failure trends");
+            // Generate mock data for demo
+            List<TrendPoint> trends = new ArrayList<>();
+            
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime start = now.minus(timeframe, ChronoUnit.DAYS);
+            
+            // Generate daily trend points
+            for (int i = 0; i <= timeframe; i++) {
+                LocalDateTime pointDate = start.plus(i, ChronoUnit.DAYS);
+                
+                // Create trend point with mock data
+                TrendPoint point = TrendPoint.builder()
+                    .timestamp(pointDate)
+                    .totalTests(100 + (int)(Math.random() * 20) - 10)
+                    .failedTests(5 + (int)(Math.random() * 10))
+                    .passRate(calculateMockPassRate(i, timeframe))
+                    .build();
+                
+                trends.add(point);
+            }
+            
+            return trends;
+        }
+    }
+    
+    /**
+     * Get detailed failure trend data - legacy method for backward compatibility
+     * 
+     * @param timeframe Timeframe in days (7, 30, 90)
      * @return List of failure trend points
      */
     public List<TrendPoint> getFailureTrends(int timeframe) {
-        log.info("Generating failure trends for {} days", timeframe);
-        
-        // For now, generate mock data
-        // In a real implementation, this would analyze actual test history
+        return getFailureTrends(timeframe, false);
+    }
+    
+    /**
+     * Generate trend data from real tests
+     */
+    private List<TrendPoint> generateTrendsFromRealTests(List<TestCase> tests, int timeframe) {
         List<TrendPoint> trends = new ArrayList<>();
         
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime start = now.minus(timeframe, ChronoUnit.DAYS);
         
-        // Generate daily trend points
+        // Use real test counts but still generate mock data since we don't have historical data
+        int totalTestCount = tests.size();
+        int failedTestCount = (int) tests.stream().filter(t -> t.getStatus() == TestCase.TestStatus.FAILED).count();
+        double currentPassRate = (double)(totalTestCount - failedTestCount) / totalTestCount;
+        
+        // Generate daily trend points that approach the current values
         for (int i = 0; i <= timeframe; i++) {
             LocalDateTime pointDate = start.plus(i, ChronoUnit.DAYS);
+            double progress = (double) i / timeframe;
             
-            // Create trend point with mock data
-            // In real implementation, this would aggregate actual results for each day
+            // Approach the current values gradually
+            int dayTotalTests = 50 + (int)((totalTestCount - 50) * progress);
+            int dayFailedTests = 10 + (int)((failedTestCount - 10) * progress);
+            double passRate = 0.7 + ((currentPassRate - 0.7) * progress);
+            
+            // Add some randomness
+            dayTotalTests += (int)(Math.random() * 5) - 2;
+            dayFailedTests += (int)(Math.random() * 3) - 1;
+            passRate += (Math.random() * 0.04) - 0.02;
+            
+            // Ensure valid values
+            dayTotalTests = Math.max(0, dayTotalTests);
+            dayFailedTests = Math.min(dayTotalTests, Math.max(0, dayFailedTests));
+            passRate = Math.min(1.0, Math.max(0.0, passRate));
+            
             TrendPoint point = TrendPoint.builder()
                 .timestamp(pointDate)
-                .totalTests(100 + (int)(Math.random() * 20) - 10)
-                .failedTests(5 + (int)(Math.random() * 10))
-                .passRate(calculateMockPassRate(i, timeframe))
+                .totalTests(dayTotalTests)
+                .failedTests(dayFailedTests)
+                .passRate(passRate)
                 .build();
             
             trends.add(point);
@@ -123,102 +219,339 @@ public class QualityMetricsService {
     /**
      * Get flaky test report
      * 
+     * @param forceRealData Whether to only use real data or allow mock data fallback
+     * @return List of flaky tests with details
+     */
+    public List<FlakyTestInfo> getFlakyTestReport(boolean forceRealData) {
+        log.info("Generating flaky test report, forceRealData={}", forceRealData);
+        
+        List<TestCase> allTests = testCaseRepository.findAll();
+        boolean hasRealData = !allTests.isEmpty();
+        
+        if (hasRealData) {
+            log.info("Using real test data for flaky test report (found {} tests)", allTests.size());
+            List<TestCase> flakyTests = detectFlakyTests(allTests);
+            
+            return flakyTests.stream()
+                .map(this::createFlakyTestInfo)
+                .collect(Collectors.toList());
+        } else if (forceRealData) {
+            log.info("No real test data found, but real data was requested. Returning empty flaky test report.");
+            return List.of();
+        } else {
+            log.info("No real test data found, using mock data for flaky test report");
+            return getMockFlakyTests();
+        }
+    }
+    
+    /**
+     * Get flaky test report - legacy method for backward compatibility
+     * 
      * @return List of flaky tests with details
      */
     public List<FlakyTestInfo> getFlakyTestReport() {
-        log.info("Generating flaky test report");
+        return getFlakyTestReport(false);
+    }
+    
+    /**
+     * Get mock flaky tests for demo
+     */
+    private List<FlakyTestInfo> getMockFlakyTests() {
+        List<FlakyTestInfo> mockTests = new ArrayList<>();
         
-        List<TestCase> allTests = testCaseRepository.findAll();
-        List<TestCase> flakyTests = detectFlakyTests(allTests);
-        
-        return flakyTests.stream()
-            .map(this::createFlakyTestInfo)
-            .collect(Collectors.toList());
+        // Sample flaky test data
+        mockTests.add(FlakyTestInfo.builder()
+            .testId(java.util.UUID.randomUUID())
+            .testName("testAsyncOperation")
+            .className("AsyncServiceTest")
+            .methodName("testAsyncOperation")
+            .passRate(0.65)
+            .executionCount(20)
+            .alternatingSessions(7)
+            .lastExecuted(LocalDateTime.now().minusDays(1))
+            .suggestedAction("Add proper thread synchronization or increase timeout")
+            .build());
+            
+        mockTests.add(FlakyTestInfo.builder()
+            .testId(java.util.UUID.randomUUID())
+            .testName("testDatabaseConnection")
+            .className("DatabaseServiceTest")
+            .methodName("testDatabaseConnection")
+            .passRate(0.73)
+            .executionCount(15)
+            .alternatingSessions(4)
+            .lastExecuted(LocalDateTime.now().minusHours(4))
+            .suggestedAction("Check for race conditions in connection pool")
+            .build());
+            
+        mockTests.add(FlakyTestInfo.builder()
+            .testId(java.util.UUID.randomUUID())
+            .testName("testUserInterfaceRendering")
+            .className("UIComponentTest")
+            .methodName("testUserInterfaceRendering")
+            .passRate(0.58)
+            .executionCount(12)
+            .alternatingSessions(5)
+            .lastExecuted(LocalDateTime.now().minusHours(2))
+            .suggestedAction("Add explicit waits for UI elements to be rendered")
+            .build());
+            
+        return mockTests;
     }
     
     /**
      * Get test health metrics by category
      * 
+     * @param forceRealData Whether to only use real data or allow mock data fallback
+     * @return Map of test categories to health metrics
+     */
+    public Map<String, CategoryHealth> getHealthByCategory(boolean forceRealData) {
+        log.info("Generating health metrics by category, forceRealData={}", forceRealData);
+        
+        List<TestCase> allTests = testCaseRepository.findAll();
+        boolean hasRealData = !allTests.isEmpty();
+        
+        if (hasRealData) {
+            log.info("Using real test data for health metrics by category (found {} tests)", allTests.size());
+            Map<String, List<TestCase>> testsByCategory = allTests.stream()
+                .collect(Collectors.groupingBy(this::getCategoryForTest));
+            
+            Map<String, CategoryHealth> healthByCategory = new HashMap<>();
+            
+            // Calculate health metrics for each category
+            for (Map.Entry<String, List<TestCase>> entry : testsByCategory.entrySet()) {
+                String category = entry.getKey();
+                List<TestCase> testsInCategory = entry.getValue();
+                
+                CategoryHealth health = CategoryHealth.builder()
+                    .totalTests(testsInCategory.size())
+                    .passingTests((int) testsInCategory.stream()
+                        .filter(t -> t.getStatus() == TestCase.TestStatus.PASSED).count())
+                    .failingTests((int) testsInCategory.stream()
+                        .filter(t -> t.getStatus() == TestCase.TestStatus.FAILED).count())
+                    .flakyTests(detectFlakyTests(testsInCategory).size())
+                    .passRate(calculatePassRate(testsInCategory))
+                    .healthScore(calculateHealthScore(testsInCategory))
+                    .build();
+                
+                healthByCategory.put(category, health);
+            }
+            
+            return healthByCategory;
+        } else if (forceRealData) {
+            log.info("No real test data found, but real data was requested. Returning empty health metrics.");
+            return Map.of();
+        } else {
+            log.info("No real test data found, using mock data for health metrics by category");
+            return getMockCategoryHealth();
+        }
+    }
+    
+    /**
+     * Get test health metrics by category - legacy method for backward compatibility
+     * 
      * @return Map of test categories to health metrics
      */
     public Map<String, CategoryHealth> getHealthByCategory() {
-        log.info("Generating health metrics by category");
+        return getHealthByCategory(false);
+    }
+    
+    /**
+     * Get mock category health data for demo
+     */
+    private Map<String, CategoryHealth> getMockCategoryHealth() {
+        Map<String, CategoryHealth> mockHealth = new HashMap<>();
         
-        List<TestCase> allTests = testCaseRepository.findAll();
-        Map<String, List<TestCase>> testsByCategory = allTests.stream()
-            .collect(Collectors.groupingBy(this::getCategoryForTest));
-        
-        Map<String, CategoryHealth> healthByCategory = new HashMap<>();
-        
-        // Calculate health metrics for each category
-        for (Map.Entry<String, List<TestCase>> entry : testsByCategory.entrySet()) {
-            String category = entry.getKey();
-            List<TestCase> testsInCategory = entry.getValue();
+        // Sample category health data
+        mockHealth.put("Unit", CategoryHealth.builder()
+            .totalTests(80)
+            .passingTests(75)
+            .failingTests(3)
+            .flakyTests(2)
+            .passRate(0.94)
+            .healthScore(92)
+            .build());
             
-            CategoryHealth health = CategoryHealth.builder()
-                .totalTests(testsInCategory.size())
-                .passingTests((int) testsInCategory.stream()
-                    .filter(t -> t.getStatus() == TestCase.TestStatus.PASSED).count())
-                .failingTests((int) testsInCategory.stream()
-                    .filter(t -> t.getStatus() == TestCase.TestStatus.FAILED).count())
-                .flakyTests(detectFlakyTests(testsInCategory).size())
-                .passRate(calculatePassRate(testsInCategory))
-                .healthScore(calculateHealthScore(testsInCategory))
-                .build();
+        mockHealth.put("API", CategoryHealth.builder()
+            .totalTests(25)
+            .passingTests(20)
+            .failingTests(4)
+            .flakyTests(1)
+            .passRate(0.80)
+            .healthScore(78)
+            .build());
             
-            healthByCategory.put(category, health);
-        }
-        
-        return healthByCategory;
+        mockHealth.put("UI", CategoryHealth.builder()
+            .totalTests(15)
+            .passingTests(8)
+            .failingTests(5)
+            .flakyTests(2)
+            .passRate(0.53)
+            .healthScore(45)
+            .build());
+            
+        mockHealth.put("Integration", CategoryHealth.builder()
+            .totalTests(18)
+            .passingTests(12)
+            .failingTests(4)
+            .flakyTests(2)
+            .passRate(0.67)
+            .healthScore(72)
+            .build());
+            
+        return mockHealth;
     }
     
     /**
      * Get most frequently failing tests
      * 
      * @param limit Maximum number of tests to return
+     * @param forceRealData Whether to only use real data or allow mock data fallback
+     * @return List of tests with highest failure counts
+     */
+    public List<FailureFrequency> getMostFrequentlyFailingTests(int limit, boolean forceRealData) {
+        log.info("Finding most frequently failing tests, limit: {}, forceRealData={}", limit, forceRealData);
+        
+        List<TestCase> allTests = testCaseRepository.findAll();
+        boolean hasRealData = !allTests.isEmpty();
+        
+        if (hasRealData) {
+            log.info("Using real test data for most frequently failing tests (found {} tests)", allTests.size());
+            List<FailureFrequency> failureFrequencies = new ArrayList<>();
+            
+            // For each test, calculate failure frequency
+            for (TestCase test : allTests) {
+                List<TestExecutionHistory> histories = getTestExecutionHistories(test);
+                
+                // Skip tests with no execution history
+                if (histories.isEmpty()) {
+                    // For real tests without history, create synthetic records if they're failing
+                    if (test.getStatus() == TestCase.TestStatus.FAILED) {
+                        FailureFrequency frequency = FailureFrequency.builder()
+                            .testId(test.getId())
+                            .testName(test.getName())
+                            .className(test.getClassName())
+                            .methodName(test.getMethodName())
+                            .failureCount(1)
+                            .executionCount(1)
+                            .failureRate(1.0)
+                            .trend(TestExecutionHistory.TestExecutionTrend.STABLE_FAIL)
+                            .build();
+                        
+                        failureFrequencies.add(frequency);
+                    }
+                    continue;
+                }
+                
+                // Find the history with the most executions
+                TestExecutionHistory history = histories.stream()
+                    .max((h1, h2) -> Integer.compare(h1.getTotalExecutions(), h2.getTotalExecutions()))
+                    .orElse(null);
+                
+                if (history != null && history.getFailedExecutions() > 0) {
+                    FailureFrequency frequency = FailureFrequency.builder()
+                        .testId(test.getId())
+                        .testName(test.getName())
+                        .className(test.getClassName())
+                        .methodName(test.getMethodName())
+                        .failureCount(history.getFailedExecutions())
+                        .executionCount(history.getTotalExecutions())
+                        .failureRate((double) history.getFailedExecutions() / history.getTotalExecutions())
+                        .trend(history.getTrend())
+                        .build();
+                    
+                    failureFrequencies.add(frequency);
+                }
+            }
+            
+            // Sort by failure count (descending) and return top 'limit'
+            return failureFrequencies.stream()
+                .sorted((f1, f2) -> Integer.compare(f2.getFailureCount(), f1.getFailureCount()))
+                .limit(limit)
+                .collect(Collectors.toList());
+        } else if (forceRealData) {
+            log.info("No real test data found, but real data was requested. Returning empty failing tests.");
+            return List.of();
+        } else {
+            log.info("No real test data found, using mock data for most frequently failing tests");
+            return getMockMostFailingTests(limit);
+        }
+    }
+    
+    /**
+     * Get most frequently failing tests - legacy method for backward compatibility
+     * 
+     * @param limit Maximum number of tests to return
      * @return List of tests with highest failure counts
      */
     public List<FailureFrequency> getMostFrequentlyFailingTests(int limit) {
-        log.info("Finding most frequently failing tests, limit: {}", limit);
+        return getMostFrequentlyFailingTests(limit, false);
+    }
+    
+    /**
+     * Get mock most frequently failing tests data for demo
+     */
+    private List<FailureFrequency> getMockMostFailingTests(int limit) {
+        List<FailureFrequency> mockTests = new ArrayList<>();
         
-        List<TestCase> allTests = testCaseRepository.findAll();
-        List<FailureFrequency> failureFrequencies = new ArrayList<>();
-        
-        // For each test, calculate failure frequency
-        for (TestCase test : allTests) {
-            List<TestExecutionHistory> histories = getTestExecutionHistories(test);
+        // Sample failing test data
+        mockTests.add(FailureFrequency.builder()
+            .testId(java.util.UUID.randomUUID())
+            .testName("testLoginWithInvalidCredentials")
+            .className("AuthServiceTest")
+            .methodName("testLoginWithInvalidCredentials")
+            .failureCount(8)
+            .executionCount(12)
+            .failureRate(0.67)
+            .trend(TestExecutionHistory.TestExecutionTrend.DETERIORATING)
+            .build());
             
-            // Skip tests with no execution history
-            if (histories.isEmpty()) {
-                continue;
-            }
+        mockTests.add(FailureFrequency.builder()
+            .testId(java.util.UUID.randomUUID())
+            .testName("testDataProcessingWithLargeFile")
+            .className("FileProcessorTest")
+            .methodName("testDataProcessingWithLargeFile")
+            .failureCount(6)
+            .executionCount(10)
+            .failureRate(0.6)
+            .trend(TestExecutionHistory.TestExecutionTrend.STABLE_FAIL)
+            .build());
             
-            // Find the history with the most executions
-            TestExecutionHistory history = histories.stream()
-                .max((h1, h2) -> Integer.compare(h1.getTotalExecutions(), h2.getTotalExecutions()))
-                .orElse(null);
+        mockTests.add(FailureFrequency.builder()
+            .testId(java.util.UUID.randomUUID())
+            .testName("testConcurrentUserAccess")
+            .className("UserServiceTest")
+            .methodName("testConcurrentUserAccess")
+            .failureCount(5)
+            .executionCount(12)
+            .failureRate(0.42)
+            .trend(TestExecutionHistory.TestExecutionTrend.IMPROVING)
+            .build());
             
-            if (history != null && history.getFailedExecutions() > 0) {
-                FailureFrequency frequency = FailureFrequency.builder()
-                    .testId(test.getId())
-                    .testName(test.getName())
-                    .className(test.getClassName())
-                    .methodName(test.getMethodName())
-                    .failureCount(history.getFailedExecutions())
-                    .executionCount(history.getTotalExecutions())
-                    .failureRate((double) history.getFailedExecutions() / history.getTotalExecutions())
-                    .trend(history.getTrend())
-                    .build();
-                
-                failureFrequencies.add(frequency);
-            }
-        }
-        
-        // Sort by failure count (descending) and return top 'limit'
-        return failureFrequencies.stream()
-            .sorted((f1, f2) -> Integer.compare(f2.getFailureCount(), f1.getFailureCount()))
-            .limit(limit)
-            .collect(Collectors.toList());
+        mockTests.add(FailureFrequency.builder()
+            .testId(java.util.UUID.randomUUID())
+            .testName("testImageUploadWithResizing")
+            .className("MediaServiceTest")
+            .methodName("testImageUploadWithResizing")
+            .failureCount(4)
+            .executionCount(11)
+            .failureRate(0.36)
+            .trend(TestExecutionHistory.TestExecutionTrend.STABLE_FAIL)
+            .build());
+            
+        mockTests.add(FailureFrequency.builder()
+            .testId(java.util.UUID.randomUUID())
+            .testName("testOrderCheckoutProcess")
+            .className("CheckoutServiceTest")
+            .methodName("testOrderCheckoutProcess")
+            .failureCount(3)
+            .executionCount(9)
+            .failureRate(0.33)
+            .trend(TestExecutionHistory.TestExecutionTrend.IMPROVING)
+            .build());
+            
+        // Return up to the requested limit
+        return mockTests.stream().limit(limit).collect(Collectors.toList());
     }
     
     /**

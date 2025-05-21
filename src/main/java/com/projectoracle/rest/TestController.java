@@ -68,45 +68,87 @@ public class TestController {
      * Get recent test executions
      * 
      * @param limit Maximum number of executions to return (default 5)
+     * @param useRealData Whether to use real data or allow fallback to mock data
      * @return List of recent test executions
      */
     @GetMapping("/recent-executions")
     public ResponseEntity<List<TestExecution>> getRecentExecutions(
-            @RequestParam(defaultValue = "5") int limit) {
-        logger.info("Getting recent test executions, limit: {}", limit);
+            @RequestParam(defaultValue = "5") int limit,
+            @RequestParam(required = false, defaultValue = "false") boolean useRealData) {
+        logger.info("Getting recent test executions, limit: {}, useRealData: {}", limit, useRealData);
         
-        // In a real implementation, we would fetch from a repository or service
-        // For now, we'll return mock data to satisfy the dashboard.js call
-        List<TestExecution> recentExecutions = new ArrayList<>();
+        List<TestCase> allTests = testCaseRepository.findAll();
+        boolean hasRealData = !allTests.isEmpty();
         
-        // Generate some mock test executions
-        String[] testNames = {"loginTest", "dataProcessingTest", "validationTest", "apiIntegrationTest", "databaseTest"};
-        
-        for (int i = 0; i < Math.min(limit, testNames.length); i++) {
-            UUID executionId = UUID.randomUUID();
-            LocalDateTime executedAt = LocalDateTime.now().minusMinutes(i * 10);
-            boolean successful = Math.random() > 0.3; // 70% pass rate
-            long executionTimeMs = (long) (Math.random() * 3000); // 0-3 seconds
+        if (hasRealData) {
+            logger.info("Using real test data for recent executions (found {} tests)", allTests.size());
             
-            TestExecution execution = new TestExecution();
-            execution.setId(executionId);
-            execution.setExecutedAt(executedAt);
-            execution.setSuccessful(successful);
-            execution.setExecutionTimeMs(executionTimeMs);
+            // Filter to the most recent test cases based on their creation/update timestamp
+            // In a real implementation, we would have a proper execution history repository
+            List<TestExecution> recentExecutions = new ArrayList<>();
             
-            if (!successful) {
-                execution.setErrorMessage("Test assertion failed: expected value did not match actual value");
-                execution.setStackTrace("at com.projectoracle.test.TestClass.testMethod(" + testNames[i] + ".java:42)");
+            // Convert recent test cases to test executions
+            for (int i = 0; i < Math.min(limit, allTests.size()); i++) {
+                TestCase test = allTests.get(i);
+                
+                TestExecution execution = new TestExecution();
+                execution.setId(UUID.randomUUID());
+                execution.setExecutedAt(LocalDateTime.now().minusMinutes(i * 15)); // Simulate recent executions
+                execution.setSuccessful(test.getStatus() == TestCase.TestStatus.PASSED);
+                execution.setExecutionTimeMs((long) (Math.random() * 3000)); // Random execution time
+                
+                if (!execution.isSuccessful()) {
+                    execution.setErrorMessage(test.getLastFailureMessage() != null 
+                        ? test.getLastFailureMessage() 
+                        : "Test assertion failed: expected value did not match actual value");
+                    execution.setStackTrace("at " + test.getClassName() + "." + test.getMethodName() + "(" 
+                        + test.getClassName() + ".java:42)");
+                }
+                
+                execution.setCodeVersion("main-" + System.currentTimeMillis());
+                execution.setEnvironment(new HashMap<>());
+                execution.setChangedFiles(new ArrayList<>());
+                
+                recentExecutions.add(execution);
             }
             
-            execution.setCodeVersion("main-" + executedAt.toEpochSecond(ZoneOffset.UTC));
-            execution.setEnvironment(new HashMap<>());
-            execution.setChangedFiles(new ArrayList<>());
+            return ResponseEntity.ok(recentExecutions);
+        } else if (useRealData) {
+            logger.info("No real test data found, but real data was requested. Returning empty executions.");
+            return ResponseEntity.ok(List.of());
+        } else {
+            logger.info("No real test data found, using mock data for recent executions");
             
-            recentExecutions.add(execution);
+            // Generate some mock test executions
+            List<TestExecution> mockExecutions = new ArrayList<>();
+            String[] testNames = {"loginTest", "dataProcessingTest", "validationTest", "apiIntegrationTest", "databaseTest"};
+            
+            for (int i = 0; i < Math.min(limit, testNames.length); i++) {
+                UUID executionId = UUID.randomUUID();
+                LocalDateTime executedAt = LocalDateTime.now().minusMinutes(i * 10);
+                boolean successful = Math.random() > 0.3; // 70% pass rate
+                long executionTimeMs = (long) (Math.random() * 3000); // 0-3 seconds
+                
+                TestExecution execution = new TestExecution();
+                execution.setId(executionId);
+                execution.setExecutedAt(executedAt);
+                execution.setSuccessful(successful);
+                execution.setExecutionTimeMs(executionTimeMs);
+                
+                if (!successful) {
+                    execution.setErrorMessage("Test assertion failed: expected value did not match actual value");
+                    execution.setStackTrace("at com.projectoracle.test.TestClass.testMethod(" + testNames[i] + ".java:42)");
+                }
+                
+                execution.setCodeVersion("main-" + executedAt.toEpochSecond(ZoneOffset.UTC));
+                execution.setEnvironment(new HashMap<>());
+                execution.setChangedFiles(new ArrayList<>());
+                
+                mockExecutions.add(execution);
+            }
+            
+            return ResponseEntity.ok(mockExecutions);
         }
-        
-        return ResponseEntity.ok(recentExecutions);
     }
 
     /**
