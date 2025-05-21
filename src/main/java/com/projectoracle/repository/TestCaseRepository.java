@@ -42,6 +42,8 @@ public class TestCaseRepository {
     public TestCaseRepository() {
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
+        // Configure to ignore unknown properties to prevent deserialization errors
+        objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     @PostConstruct

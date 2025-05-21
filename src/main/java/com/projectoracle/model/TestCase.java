@@ -57,6 +57,9 @@ public class TestCase {
     private String httpMethod; // HTTP method for API tests
     private List<String> components; // UI components involved
     private List<String> steps; // Steps to perform in the test
+    
+    // Legacy field for backward compatibility
+    private Boolean apiTest; // Kept for backward compatibility with older JSON files
 
     /**
      * The type of test case
@@ -127,6 +130,7 @@ public class TestCase {
                 .targetEndpoint(this.targetEndpoint)
                 .baseUrl(this.baseUrl)
                 .httpMethod(this.httpMethod)
+                .apiTest(this.apiTest)
                 .build();
         
         // Copy lists (if they exist)
@@ -173,7 +177,13 @@ public class TestCase {
      * @return true if this is an API test
      */
     public boolean isApiTest() {
-        return type == TestType.API;
+        // First check the type, but fall back to the legacy field for backward compatibility
+        if (type == TestType.API) {
+            return true;
+        }
+        
+        // Check the legacy field if present
+        return apiTest != null && apiTest;
     }
 
     /**
