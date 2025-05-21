@@ -10,7 +10,6 @@ import org.openqa.selenium.edge.EdgeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import com.projectoracle.config.CrawlerConfig;
@@ -24,7 +23,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Service for managing WebDriver sessions for test execution and crawling.
@@ -38,28 +36,24 @@ public class WebDriverSessionManager {
     @Autowired
     private CrawlerConfig crawlerConfig;
     
-    @Autowired
-    @Qualifier("chromeDriver")
-    private WebDriver chromeDriverTemplate;
-    
-    @Autowired
-    @Qualifier("firefoxDriver")
-    private WebDriver firefoxDriverTemplate;
-    
-    @Autowired
-    @Qualifier("edgeDriver")
-    private WebDriver edgeDriverTemplate;
+    // Remove dependency on specific bean instances that might not be available
+    // We'll create drivers directly as needed instead
 
     // Map of session ID to WebDriver instances
     private final Map<String, WebDriverSession> activeSessions = new ConcurrentHashMap<>();
     
     @PostConstruct
     public void initialize() {
-        // Setup WebDriverManager for all driver types
-        WebDriverManager.chromedriver().setup();
-        WebDriverManager.firefoxdriver().setup();
-        WebDriverManager.edgedriver().setup();
-        logger.info("WebDriverManager initialized for all browser types");
+        try {
+            // Setup WebDriverManager for all driver types
+            WebDriverManager.chromedriver().setup();
+            WebDriverManager.firefoxdriver().setup();
+            WebDriverManager.edgedriver().setup();
+            logger.info("WebDriverManager initialized for all browser types");
+        } catch (Exception e) {
+            logger.error("Error initializing WebDriverManager", e);
+            logger.info("Will attempt direct driver creation when needed");
+        }
     }
 
     // Available browser types
@@ -237,7 +231,12 @@ public class WebDriverSessionManager {
      * Create a Chrome WebDriver
      */
     private WebDriver createChromeDriver(boolean headless) {
-        WebDriverManager.chromedriver().setup();
+        try {
+            WebDriverManager.chromedriver().setup();
+        } catch (Exception e) {
+            logger.warn("Error setting up ChromeDriver with WebDriverManager. Will attempt direct driver creation.", e);
+        }
+        
         ChromeOptions options = new ChromeOptions();
 
         // Configure browser options
@@ -252,16 +251,34 @@ public class WebDriverSessionManager {
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--user-agent=" + crawlerConfig.getUserAgent());
-
-        // Create and return the driver
-        return new ChromeDriver(options);
+        
+        try {
+            // Create and return the driver
+            return new ChromeDriver(options);
+        } catch (Exception e) {
+            logger.error("Failed to create ChromeDriver with standard options", e);
+            // Try with minimal options as a fallback
+            ChromeOptions minimalOptions = new ChromeOptions();
+            minimalOptions.addArguments("--no-sandbox");
+            minimalOptions.addArguments("--disable-dev-shm-usage");
+            if (headless) {
+                minimalOptions.addArguments("--headless=new");
+            }
+            logger.info("Attempting to create ChromeDriver with minimal options");
+            return new ChromeDriver(minimalOptions);
+        }
     }
 
     /**
      * Create a Firefox WebDriver
      */
     private WebDriver createFirefoxDriver(boolean headless) {
-        WebDriverManager.firefoxdriver().setup();
+        try {
+            WebDriverManager.firefoxdriver().setup();
+        } catch (Exception e) {
+            logger.warn("Error setting up FirefoxDriver with WebDriverManager. Will attempt direct driver creation.", e);
+        }
+        
         FirefoxOptions options = new FirefoxOptions();
 
         // Configure browser options
@@ -273,15 +290,31 @@ public class WebDriverSessionManager {
         options.addArguments("-height=1080");
         options.addPreference("general.useragent.override", crawlerConfig.getUserAgent());
 
-        // Create and return the driver
-        return new FirefoxDriver(options);
+        try {
+            // Create and return the driver
+            return new FirefoxDriver(options);
+        } catch (Exception e) {
+            logger.error("Failed to create FirefoxDriver with standard options", e);
+            // Try with minimal options as a fallback
+            FirefoxOptions minimalOptions = new FirefoxOptions();
+            if (headless) {
+                minimalOptions.addArguments("-headless");
+            }
+            logger.info("Attempting to create FirefoxDriver with minimal options");
+            return new FirefoxDriver(minimalOptions);
+        }
     }
 
     /**
      * Create an Edge WebDriver
      */
     private WebDriver createEdgeDriver(boolean headless) {
-        WebDriverManager.edgedriver().setup();
+        try {
+            WebDriverManager.edgedriver().setup();
+        } catch (Exception e) {
+            logger.warn("Error setting up EdgeDriver with WebDriverManager. Will attempt direct driver creation.", e);
+        }
+        
         EdgeOptions options = new EdgeOptions();
 
         // Configure browser options
@@ -297,8 +330,21 @@ public class WebDriverSessionManager {
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--user-agent=" + crawlerConfig.getUserAgent());
 
-        // Create and return the driver
-        return new EdgeDriver(options);
+        try {
+            // Create and return the driver
+            return new EdgeDriver(options);
+        } catch (Exception e) {
+            logger.error("Failed to create EdgeDriver with standard options", e);
+            // Try with minimal options as a fallback
+            EdgeOptions minimalOptions = new EdgeOptions();
+            minimalOptions.addArguments("--no-sandbox");
+            minimalOptions.addArguments("--disable-dev-shm-usage");
+            if (headless) {
+                minimalOptions.addArguments("--headless=new");
+            }
+            logger.info("Attempting to create EdgeDriver with minimal options");
+            return new EdgeDriver(minimalOptions);
+        }
     }
 
     /**

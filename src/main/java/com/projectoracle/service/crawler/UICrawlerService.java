@@ -24,6 +24,7 @@ import com.projectoracle.model.Page;
 import com.projectoracle.model.UIComponent;
 import com.projectoracle.repository.ElementRepository;
 import com.projectoracle.config.CrawlerConfig;
+import org.openqa.selenium.NoSuchElementException;
 
 import java.time.Duration;
 
@@ -44,6 +45,12 @@ public class UICrawlerService {
 
     @Autowired
     private ElementFingerprintService elementFingerprintService;
+    
+    @Autowired
+    private WebDriverAuthenticationService authenticationService;
+
+    @Autowired
+    private WebDriverSessionManager webDriverSessionManager;
 
     private final Map<String, Page> pageRegistry = new ConcurrentHashMap<>();
     private final Set<String> visitedUrls = Collections.synchronizedSet(new HashSet<>());
@@ -132,6 +139,14 @@ public class UICrawlerService {
         try {
             // Initialize WebDriver
             driver = createWebDriver();
+            
+            // Perform login if authentication is enabled and this is the first page
+            if (crawlerConfig.isHandleAuthentication() && visitedUrls.size() == 1) {
+                boolean loginSuccess = authenticationService.performLogin(driver);
+                if (!loginSuccess) {
+                    logger.warn("Authentication failed. Crawling may be limited.");
+                }
+            }
 
             // Navigate to the URL
             driver.get(url);
@@ -173,19 +188,35 @@ public class UICrawlerService {
      * @return configured WebDriver
      */
     private WebDriver createWebDriver() {
-        ChromeOptions options = new ChromeOptions();
+        try {
+            // Try to use the session manager to create a WebDriver session
+            String sessionId = webDriverSessionManager.getOrCreateSession(
+                    WebDriverSessionManager.BrowserType.CHROME, 
+                    !crawlerConfig.isTakeScreenshots() // Use headless mode if not taking screenshots
+            );
+            return webDriverSessionManager.getDriver(sessionId);
+        } catch (Exception e) {
+            // Fallback to direct creation if session manager fails
+            logger.warn("Failed to get WebDriver from session manager, creating directly", e);
+            
+            ChromeOptions options = new ChromeOptions();
 
-        // Add browser options for crawling
-        options.addArguments("--headless"); // Run in headless mode
-        options.addArguments("--disable-gpu");
-        options.addArguments("--window-size=1920,1080");
-        options.addArguments("--ignore-certificate-errors");
-        options.addArguments("--disable-extensions");
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-dev-shm-usage");
+            // Add browser options for crawling
+            if (!crawlerConfig.isTakeScreenshots()) {
+                options.addArguments("--headless=new"); // Use new headless mode
+            }
+            options.addArguments("--disable-gpu");
+            options.addArguments("--window-size=" + crawlerConfig.getViewportWidth() + "," + 
+                    crawlerConfig.getViewportHeight());
+            options.addArguments("--ignore-certificate-errors");
+            options.addArguments("--disable-extensions");
+            options.addArguments("--no-sandbox");
+            options.addArguments("--disable-dev-shm-usage");
+            options.addArguments("--user-agent=" + crawlerConfig.getUserAgent());
 
-        // Create a new ChromeDriver instance
-        return new ChromeDriver(options);
+            // Create a new ChromeDriver instance
+            return new ChromeDriver(options);
+        }
     }
 
     /**

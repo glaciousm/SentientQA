@@ -59,12 +59,34 @@ public class CrawlerController {
                 );
             }
         }
+        
+        // Set authentication parameters in the crawler config if provided
+        if (request.isEnableAuthentication()) {
+            crawlerConfig.setHandleAuthentication(true);
+            
+            if (request.getUsername() != null && !request.getUsername().isEmpty()) {
+                crawlerConfig.setUsername(request.getUsername());
+            }
+            
+            if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+                crawlerConfig.setPassword(request.getPassword());
+            }
+            
+            if (request.getLoginUrl() != null && !request.getLoginUrl().isEmpty()) {
+                crawlerConfig.setLoginUrl(request.getLoginUrl());
+            }
+            
+            logger.info("Authentication enabled for crawl: {}", crawlId);
+        } else {
+            crawlerConfig.setHandleAuthentication(false);
+        }
 
         // Create new crawl status
         CrawlStatus status = new CrawlStatus();
         status.setBaseUrl(request.getBaseUrl());
         status.setStartTime(System.currentTimeMillis());
         status.setStatus("initializing");
+        status.setAuthenticationEnabled(request.isEnableAuthentication());
         activeCrawls.put(crawlId, status);
 
         // Get max pages from request or use default
@@ -217,6 +239,10 @@ public class CrawlerController {
         private String baseUrl;
         private int maxPages;
         private Map<String, String> customConfig;
+        private boolean enableAuthentication;
+        private String username;
+        private String password;
+        private String loginUrl;
 
         public String getBaseUrl() {
             return baseUrl;
@@ -240,6 +266,38 @@ public class CrawlerController {
 
         public void setCustomConfig(Map<String, String> customConfig) {
             this.customConfig = customConfig;
+        }
+        
+        public boolean isEnableAuthentication() {
+            return enableAuthentication;
+        }
+        
+        public void setEnableAuthentication(boolean enableAuthentication) {
+            this.enableAuthentication = enableAuthentication;
+        }
+        
+        public String getUsername() {
+            return username;
+        }
+        
+        public void setUsername(String username) {
+            this.username = username;
+        }
+        
+        public String getPassword() {
+            return password;
+        }
+        
+        public void setPassword(String password) {
+            this.password = password;
+        }
+        
+        public String getLoginUrl() {
+            return loginUrl;
+        }
+        
+        public void setLoginUrl(String loginUrl) {
+            this.loginUrl = loginUrl;
         }
     }
 
@@ -306,6 +364,7 @@ public class CrawlerController {
         private int componentsDiscovered;
         private String errorMessage;
         private boolean completed;
+        private boolean authenticationEnabled;
 
         public String getBaseUrl() {
             return baseUrl;
@@ -385,6 +444,14 @@ public class CrawlerController {
 
         public void setCompleted(boolean completed) {
             this.completed = completed;
+        }
+        
+        public boolean isAuthenticationEnabled() {
+            return authenticationEnabled;
+        }
+        
+        public void setAuthenticationEnabled(boolean authenticationEnabled) {
+            this.authenticationEnabled = authenticationEnabled;
         }
     }
 }
