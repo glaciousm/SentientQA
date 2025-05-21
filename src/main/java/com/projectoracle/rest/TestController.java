@@ -98,8 +98,8 @@ public class TestController {
                 execution.setExecutionTimeMs((long) (Math.random() * 3000)); // Random execution time
                 
                 if (!execution.isSuccessful()) {
-                    execution.setErrorMessage(test.getLastFailureMessage() != null 
-                        ? test.getLastFailureMessage() 
+                    execution.setErrorMessage(test.getErrorMessage() != null 
+                        ? test.getErrorMessage() 
                         : "Test assertion failed: expected value did not match actual value");
                     execution.setStackTrace("at " + test.getClassName() + "." + test.getMethodName() + "(" 
                         + test.getClassName() + ".java:42)");
