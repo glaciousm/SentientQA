@@ -1,8 +1,8 @@
-# Project Oracle: AI-Powered Test Automation Platform
+# Sentinel: AI-Powered Test Automation Platform
 
 ## Executive Summary
 
-Project Oracle is an innovative AI-powered software testing platform designed to transform the Quality Assurance landscape for enterprise applications. By leveraging advanced AI models, it automates the entire testing lifecycle - from test discovery and generation to execution and maintenance - drastically reducing QA effort while improving code coverage and test quality. The platform integrates with existing development workflows through a knowledge integration system that ingests documentation, code analysis, and historical test data to create contextually-aware tests.
+Sentinel is an innovative AI-powered software testing platform designed to transform the Quality Assurance landscape for enterprise applications. By leveraging advanced AI models, it automates the entire testing lifecycle - from test discovery and generation to execution and maintenance - drastically reducing QA effort while improving code coverage and test quality. The platform integrates with existing development workflows through a knowledge integration system that ingests documentation, code analysis, and historical test data to create contextually-aware tests.
 
 **Key Business Benefits:**
 
@@ -13,9 +13,9 @@ Project Oracle is an innovative AI-powered software testing platform designed to
 - **Cross-Platform Coverage**: Simultaneous support for UI, API, and unit test generation
 - **Enterprise-Ready Integration**: Works with CI/CD pipelines, existing test frameworks and version control systems
 
-## Introduction to Project Oracle
+## Introduction to Sentinel
 
-Project Oracle represents a paradigm shift in how software testing is approached. Instead of manually scripting test cases - a process that is time-consuming, error-prone, and often incomplete - Project Oracle uses AI to understand application behavior, generate comprehensive test cases, and execute them automatically. As applications grow more complex and release cycles shorten, traditional testing approaches struggle to keep pace. Project Oracle solves this challenge through automation and intelligence.
+Sentinel represents a paradigm shift in how software testing is approached. Instead of manually scripting test cases - a process that is time-consuming, error-prone, and often incomplete - Sentinel uses AI to understand application behavior, generate comprehensive test cases, and execute them automatically. As applications grow more complex and release cycles shorten, traditional testing approaches struggle to keep pace. Sentinel solves this challenge through automation and intelligence.
 
 The system operates on a multi-phase architecture that includes:
 
@@ -27,11 +27,11 @@ The system operates on a multi-phase architecture that includes:
 6. **Test Healing**: Automatically repairing broken tests when the application changes
 7. **Reporting**: Comprehensive analytics on test coverage and quality
 
-By implementing Project Oracle, organizations can significantly accelerate their testing processes while improving overall software quality and reducing the maintenance burden on QA teams.
+By implementing Sentinel, organizations can significantly accelerate their testing processes while improving overall software quality and reducing the maintenance burden on QA teams.
 
 ## Core Architecture & Components
 
-Project Oracle is built on a modular, extensible architecture designed for enterprise-scale deployments. The platform consists of the following core components:
+Sentinel is built on a modular, extensible architecture designed for enterprise-scale deployments. The platform consists of the following core components:
 
 ### Service Layer
 
@@ -75,7 +75,7 @@ Project Oracle is built on a modular, extensible architecture designed for enter
 
 ### AI-Powered Test Generation
 
-The core of Project Oracle is its ability to generate high-quality tests automatically. The platform uses locally-deployed open-source AI models to analyze code and create appropriate test cases, considering:
+The core of Sentinel is its ability to generate high-quality tests automatically. The platform uses locally-deployed open-source AI models to analyze code and create appropriate test cases, considering:
 
 - Method signatures and parameters
 - Input validation requirements
@@ -87,7 +87,7 @@ Tests are generated in executable form (primarily JUnit 5 for Java applications)
 
 ### Knowledge Integration System
 
-A key differentiator for Project Oracle is its ability to integrate knowledge from various sources to enhance test generation. The Knowledge Integration System:
+A key differentiator for Sentinel is its ability to integrate knowledge from various sources to enhance test generation. The Knowledge Integration System:
 
 - Parses API documentation (OpenAPI/Swagger, XML, text)
 - Analyzes project documentation (Markdown, text, HTML)
@@ -100,7 +100,7 @@ This integration ensures tests are not just technically correct, but also busine
 
 ### Multi-Modal Test Generation
 
-Project Oracle generates tests across different testing modalities:
+Sentinel generates tests across different testing modalities:
 
 1. **Unit Tests**: For individual methods and classes
 2. **API Tests**: For REST endpoints and services
@@ -113,7 +113,7 @@ This comprehensive approach ensures full testing coverage across the application
 
 ### Self-Healing Tests
 
-One of the most powerful features of Project Oracle is its ability to heal broken tests automatically. When application changes break existing tests, the system:
+One of the most powerful features of Sentinel is its ability to heal broken tests automatically. When application changes break existing tests, the system:
 
 1. Analyzes the failure pattern
 2. Identifies the root cause (e.g., changed UI element, modified API response)
@@ -125,7 +125,7 @@ This dramatically reduces test maintenance effort, a significant cost in traditi
 
 ### Test Prioritization
 
-Not all tests have equal importance. Project Oracle includes a sophisticated test prioritization engine that considers:
+Not all tests have equal importance. Sentinel includes a sophisticated test prioritization engine that considers:
 
 - Historical failure rates
 - Code coverage and complexity
@@ -137,7 +137,7 @@ This ensures that the most important tests are run first, optimizing testing tim
 
 ### Automation Project Generation
 
-After discovering and analyzing an application, Project Oracle can automatically generate a complete automation testing project using modern frameworks:
+After discovering and analyzing an application, Sentinel can automatically generate a complete automation testing project using modern frameworks:
 
 - **Java 21**: For the latest language features
 - **Playwright**: For modern UI automation
@@ -148,7 +148,7 @@ This provides teams with a ready-to-use automation framework that follows best p
 
 ### Bug Detection and JIRA Integration
 
-During crawling and testing, Project Oracle can detect potential bugs and issues in the application. When found, these issues can be:
+During crawling and testing, Sentinel can detect potential bugs and issues in the application. When found, these issues can be:
 
 - Reported to the user with detailed information
 - Automatically created as JIRA tickets with appropriate metadata
@@ -159,7 +159,7 @@ This creates a seamless feedback loop between testing and issue management.
 
 ### Comprehensive Reporting
 
-Project Oracle provides rich reporting capabilities:
+Sentinel provides rich reporting capabilities:
 
 - Test execution results with pass/fail details
 - Code coverage analysis
@@ -173,7 +173,7 @@ Project Oracle provides rich reporting capabilities:
 
 ### AI Model Architecture
 
-Project Oracle uses a hybrid AI approach:
+Sentinel uses a hybrid AI approach:
 
 1. **Local Models**: For core test generation, using Deep Java Library (DJL) with HuggingFace GPT-2
 2. **Model Quantization**: For optimized memory usage with FP16/INT8 precision
@@ -296,7 +296,7 @@ Project Oracle can extract knowledge from various sources:
 
 1. Clone the repository
 2. Run `mvn clean install`
-3. Start the application with `java -jar target/project-oracle-0.1.0-SNAPSHOT.jar`
+3. Start the application with `java -jar target/sentinel-0.1.0-SNAPSHOT.jar`
 4. Access the dashboard at http://localhost:8080
 5. Log in with default credentials (admin/admin)
 
@@ -328,7 +328,7 @@ Project Oracle can extract knowledge from various sources:
 
 ## Future Roadmap
 
-Project Oracle's roadmap includes the following key initiatives:
+Sentinel's roadmap includes the following key initiatives:
 
 1. **Cross-Language Support**: Expanding beyond Java to support Python, JavaScript, and other languages
 2. **Plugin Architecture**: Creating an extensible plugin system for custom generators and integrations
@@ -349,7 +349,7 @@ A hypothetical fintech company implements Project Oracle to improve testing effi
 
 ### E-commerce Platform Case Study
 
-A hypothetical e-commerce platform integrates Project Oracle into their CI/CD pipeline:
+A hypothetical e-commerce platform integrates Sentinel into their CI/CD pipeline:
 
 - Potential to increase release frequency
 - Reduced test maintenance effort through self-healing tests
@@ -358,15 +358,15 @@ A hypothetical e-commerce platform integrates Project Oracle into their CI/CD pi
 
 ## Conclusion
 
-Project Oracle represents a quantum leap in automated testing technology. By combining AI-powered test generation with knowledge integration and self-healing capabilities, it eliminates the major pain points of traditional testing approaches:
+Sentinel represents a quantum leap in automated testing technology. By combining AI-powered test generation with knowledge integration and self-healing capabilities, it eliminates the major pain points of traditional testing approaches:
 
 - Manual test creation is eliminated through AI generation
 - Test maintenance burden is reduced through self-healing
 - Coverage gaps are addressed through comprehensive discovery
 - Business-relevant testing is ensured through knowledge integration
 
-The result is a testing platform that is not just faster and more efficient, but also produces higher quality tests that better represent real-world usage scenarios. As development cycles continue to accelerate and applications grow more complex, Project Oracle provides a sustainable approach to quality assurance that scales with enterprise needs.
+The result is a testing platform that is not just faster and more efficient, but also produces higher quality tests that better represent real-world usage scenarios. As development cycles continue to accelerate and applications grow more complex, Sentinel provides a sustainable approach to quality assurance that scales with enterprise needs.
 
 ---
 
-*For more information, technical documentation, or to request a demo, please contact the Project Oracle team.*
+*For more information, technical documentation, or to request a demo, please contact the Sentinel team.*

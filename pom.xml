@@ -5,11 +5,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.projectoracle</groupId>
-  <artifactId>project-oracle</artifactId>
+  <artifactId>sentinel</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>Project Oracle</name>
+  <name>Sentinel</name>
   <description>AI-Powered QA Platform that operates locally with free models</description>
 
   <parent>

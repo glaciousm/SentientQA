@@ -1,8 +1,8 @@
-# Project Oracle
+# Sentinel
 
 ## Overview
 
-**Project Oracle** is an AI-powered software testing platform implemented in Java. It uses local open-source AI models to automatically generate, execute, and analyze tests for Java applications. The system is designed as a Spring Boot application and follows the multi-phase architecture outlined in the Project Oracle design specifications, which include components for code analysis, test generation, execution, reporting, and self-healing. The current implementation closely adheres to the specified architecture and flow.
+**Sentinel** is an AI-powered software testing platform implemented in Java. It uses local open-source AI models to automatically generate, execute, and analyze tests for Java applications. The system is designed as a Spring Boot application and follows the multi-phase architecture outlined in the Sentinel design specifications, which include components for code analysis, test generation, execution, reporting, and self-healing. The current implementation closely adheres to the specified architecture and flow.
 
 ## Installation and Setup
 
@@ -25,7 +25,7 @@
 
 4. **Run the Application**
    ```bash
-   java -jar target/project-oracle-0.1.0-SNAPSHOT.jar
+   java -jar target/sentinel-0.1.0-SNAPSHOT.jar
    ```  
    The server starts on port 8080. On first run, it auto-downloads the default AI model to `output/models`.
 
@@ -139,7 +139,7 @@ Refer to the source Javadoc or log output for full request/response models.
 - **Test Repository** (`TestCaseRepository`): Persists test cases in memory and on disk (JSON).
 - **Execution Engine** (`EnhancedTestExecutionService`): Compiles with Java Compiler API and runs JUnit 5, capturing results.
 - **Reporting** (`TestReportGenerator`): Aggregates results and coverage, outputs HTML/JSON/CSV/Excel.
-- **Self-Healing** (`TestHealingService`): Prototype AI fixes for failing tests.
+- **Self-Healing** (`TestHealingService`): AI fixes for failing tests.
 
 ## Dependencies
 
@@ -160,7 +160,7 @@ Refer to the source Javadoc or log output for full request/response models.
 
 ## Conclusion
 
-Project Oracle delivers an end-to-end local QA automation workflow: from code analysis to AI-generated tests, execution, and reporting. See [ROADMAP.md](ROADMAP.md) for upcoming enhancements.
+Sentinel delivers an end-to-end local QA automation workflow: from code analysis to AI-generated tests, execution, and reporting. See [ROADMAP.md](ROADMAP.md) for upcoming enhancements.
 
 ---
 

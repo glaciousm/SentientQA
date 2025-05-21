@@ -1,8 +1,8 @@
-# Project Oracle Development Roadmap
+# Sentinel Development Roadmap
 
 ## Overview
 
-This roadmap outlines the development goals for Project Oracle, divided into **Completed**, **Implementation Stages**, **Short-Term** (1–3 months), and **Long-Term** (3+ months) objectives. Each task includes its current status and priority level to help guide focus and resource allocation.
+This roadmap outlines the development goals for Sentinel, divided into **Completed**, **Implementation Stages**, **Short-Term** (1–3 months), and **Long-Term** (3+ months) objectives. Each task includes its current status and priority level to help guide focus and resource allocation.
 
 ---
 

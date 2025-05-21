@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * REST controller for Project Oracle API endpoints.
+ * REST controller for Sentinel API endpoints.
  * Provides access to code analysis and test generation services.
  */
 @RestController
@@ -37,7 +37,7 @@ public class OracleController {
      */
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
-        return ResponseEntity.ok("Project Oracle API is running");
+        return ResponseEntity.ok("Sentinel API is running");
     }
 
     /**
