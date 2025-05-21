@@ -50,6 +50,11 @@
             </a>
           </li>
           <li class="nav-item">
+            <a class="nav-link" href="#" id="scanCodeLink">
+              <i class="bi bi-search"></i> Scan Code
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link" href="security-tests.html">Security Testing</a>
           </li>
           <li class="nav-item">
@@ -513,6 +518,142 @@
   <script src="js/dashboard.js"></script>
   <script src="js/real-data-toggle.js"></script>
   <script src="js/code-scanner.js"></script>
+  
+  <!-- Initialize scan code modal directly -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Create scan code modal if it doesn't exist already
+      if (!document.getElementById('scanCodeModal')) {
+        // Create modal HTML
+        const modalHtml = `
+          <div class="modal fade" id="scanCodeModal" tabindex="-1" aria-labelledby="scanCodeModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="scanCodeModalLabel">Scan Code & Generate Tests</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="scanCodeForm">
+                    <div class="mb-3">
+                      <label for="sourcePath" class="form-label">Source Path</label>
+                      <input type="text" class="form-control" id="sourcePath" 
+                        placeholder="Enter path to Java file or directory" required>
+                      <div class="form-text">Path to a Java file or directory containing Java files</div>
+                    </div>
+                    <div class="mb-3">
+                      <label for="maxTests" class="form-label">Maximum Tests</label>
+                      <input type="number" class="form-control" id="maxTests" min="1" max="50" value="10">
+                      <div class="form-text">Maximum number of tests to generate</div>
+                    </div>
+                  </form>
+                  <div id="scanResults" class="mt-3" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                  <button type="button" class="btn btn-primary" id="scanCodeBtn">Scan & Generate Tests</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Add modal to document
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Get the modal element and create a Bootstrap modal instance
+        const scanModal = new bootstrap.Modal(document.getElementById('scanCodeModal'));
+        
+        // Add event listener to scan link
+        const scanCodeLink = document.getElementById('scanCodeLink');
+        if (scanCodeLink) {
+          scanCodeLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            scanModal.show();
+          });
+        }
+        
+        // Add event listener to scan button
+        const scanCodeBtn = document.getElementById('scanCodeBtn');
+        if (scanCodeBtn) {
+          scanCodeBtn.addEventListener('click', function() {
+            const sourcePath = document.getElementById('sourcePath').value;
+            const maxTests = document.getElementById('maxTests').value;
+            
+            if (!sourcePath) {
+              alert('Please enter a source path');
+              return;
+            }
+            
+            // Show loading indicator
+            const scanResults = document.getElementById('scanResults');
+            scanResults.style.display = 'block';
+            scanResults.innerHTML = `
+              <div class="d-flex justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </div>
+              <p class="text-center mt-2">Scanning code and generating tests...</p>
+              <p class="text-center text-muted small">This may take a few moments</p>
+            `;
+            
+            // Enable real data mode
+            localStorage.setItem('useRealData', 'true');
+            
+            // Call the API to scan code
+            fetch(`${API_BASE_URL}/tests/scan?sourcePath=${encodeURIComponent(sourcePath)}&maxTests=${maxTests}`, {
+              method: 'POST'
+            })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error(`API returned ${response.status}`);
+              }
+              return response.json();
+            })
+            .then(data => {
+              // Update results
+              if (data.length === 0) {
+                scanResults.innerHTML = `
+                  <div class="alert alert-warning">
+                    No tests were generated. Please check the path and try again.
+                  </div>
+                `;
+              } else {
+                scanResults.innerHTML = `
+                  <div class="alert alert-success">
+                    Successfully generated ${data.length} tests! 
+                    <button type="button" class="btn btn-sm btn-primary float-end" onclick="refreshDashboard()">
+                      Refresh Dashboard
+                    </button>
+                  </div>
+                  <div class="mt-3">
+                    <h6>Generated Tests:</h6>
+                    <ul class="list-group">
+                      ${data.map(test => `
+                        <li class="list-group-item">
+                          <strong>${test.name}</strong>
+                          <small class="d-block text-muted">${test.className}</small>
+                        </li>
+                      `).join('')}
+                    </ul>
+                  </div>
+                `;
+              }
+            })
+            .catch(error => {
+              console.error('Error scanning code:', error);
+              scanResults.innerHTML = `
+                <div class="alert alert-danger">
+                  Error scanning code: ${error.message}
+                </div>
+              `;
+            });
+          });
+        }
+      }
+    });
+  </script>
   
   <!-- User menu script -->
   <script>
