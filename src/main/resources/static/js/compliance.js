@@ -952,13 +952,15 @@ function displayTestDetails(test) {
   const standard = standardMatch ? standardMatch[1] : 'UNKNOWN';
   
   // Create test details content
-  let content = `
+  document.getElementById('testDetailsContent').innerHTML = `
     <h5>${test.name}</h5>
     <p class="text-muted">${test.description}</p>
     
     <div class="mb-3 d-flex align-items-center">
-      <span class="rule-badge ${getStandardClass(standard)}">${formatStandardName(standard)}</span>
-      <span class="ms-2 test-status ${getTestStatusBadgeClass(test.status)}">${test.status}</span>
+      <span class="rule-badge ${getStandardClass(
+      standard)}">${formatStandardName(standard)}</span>
+      <span class="ms-2 test-status ${getTestStatusBadgeClass(
+      test.status)}">${test.status}</span>
     </div>
     
     <h6>Test Code:</h6>
@@ -966,8 +968,6 @@ function displayTestDetails(test) {
       <pre>${escapeHtml(test.sourceCode)}</pre>
     </div>
   `;
-  
-  document.getElementById('testDetailsContent').innerHTML = content;
   
   // Store test ID on run button
   document.getElementById('runTestBtn').setAttribute('data-test-id', test.id);
@@ -1690,7 +1690,6 @@ function displayBulkGenerateResults(results, standard) {
       generateComplianceTests();
     });
   });
-}
 }
 
 // Generate tests from report

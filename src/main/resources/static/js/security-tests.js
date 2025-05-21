@@ -549,7 +549,8 @@ public class SecurityUserServiceTest {
         try {
             // In a real test, this would capture the actual query from the mock
             // For this demo, we're simulating a query that shows vulnerability
-            return "SELECT * FROM users WHERE username = '" + maliciousInput + "'";
+            // Using a hardcoded example since maliciousInput is not in scope here
+            return "SELECT * FROM users WHERE username = '' OR '1'='1'";
         } catch (Exception e) {
             return ""; 
         }
@@ -859,7 +860,7 @@ function getDemoVulnerabilityFindings() {
       vulnerabilityType: 'SQL_INJECTION',
       description: 'Unparameterized SQL queries can be exploited',
       explanation: 'The method concatenates user input directly into SQL queries without using parameterized statements, which can allow attackers to inject malicious SQL code.',
-      snippet: 'String query = "SELECT * FROM users WHERE username = '" + username + "'";',
+      snippet: 'String query = "SELECT * FROM users WHERE username = \'" + username + "\'";',
       recommendations: [
         'Use PreparedStatement with parameterized queries instead of string concatenation',
         'Apply input validation and sanitization',
@@ -1142,9 +1143,9 @@ function saveConfiguration() {
   
   // Build configuration object
   const config = {
-    aiAnalysisThreshold: parseInt(aiAnalysisThreshold),
-    maxTestsPerMethod: parseInt(maxTestsPerMethod),
-    enabledVulnerabilityTypes: enabledVulnerabilityTypes
+    aiAnalysisThreshold: parseInt(aiAnalysisThreshold) || 50,
+    maxTestsPerMethod: parseInt(maxTestsPerMethod) || 3,
+    enabledVulnerabilityTypes: enabledVulnerabilityTypes || []
   };
   
   console.log('Saved configuration:', config);
