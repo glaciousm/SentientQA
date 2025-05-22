@@ -18,6 +18,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(
                     new AntPathRequestMatcher("/"),
+                    new AntPathRequestMatcher("/login"),
                     new AntPathRequestMatcher("/login.html"),
                     new AntPathRequestMatcher("/index.html"),
                     new AntPathRequestMatcher("/css/**"),
@@ -26,7 +27,9 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/api/v1/health"),
                     new AntPathRequestMatcher("/h2-console/**"),
                     new AntPathRequestMatcher("/swagger-ui/**"),
-                    new AntPathRequestMatcher("/v3/api-docs/**")
+                    new AntPathRequestMatcher("/v3/api-docs/**"),
+                    new AntPathRequestMatcher("/static/**"),
+                    new AntPathRequestMatcher("/webjars/**")
                 ).permitAll()
                 .requestMatchers(
                     new AntPathRequestMatcher("/management/**")
@@ -34,9 +37,10 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
-                .loginPage("/login.html")
+                .loginPage("/login")  // Changed from /login.html to /login
                 .loginProcessingUrl("/login")
                 .defaultSuccessUrl("/dashboard.html", true)
+                .failureUrl("/login?error=true")
                 .permitAll()
             )
             .logout(logout -> logout

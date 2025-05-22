@@ -1,17 +1,8 @@
 package com.projectoracle.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Service;
-
-import com.projectoracle.config.AIConfig;
-
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
-
+import com.projectoracle.config.AIConfig;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,7 +10,12 @@ import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Service;
 
 /**
  * Service for loading and validating models during application startup.
@@ -36,11 +32,6 @@ public class ModelStartupService {
     @Autowired
     private ModelDownloadService modelDownloadService;
 
-    // We can't autowire AIModelService directly because it creates a circular dependency
-    // Instead, we'll use ApplicationContext to get it when needed
-    @Autowired
-    private org.springframework.context.ApplicationContext applicationContext;
-    
     @Autowired
     private ModelStateService modelStateService;
 
@@ -256,7 +247,7 @@ public class ModelStartupService {
     /**
      * Test load models to verify they can be loaded successfully
      */
-    private void testLoadModels() throws ModelNotFoundException, MalformedModelException, IOException {
+    private void testLoadModels() {
         logger.info("Test loading models");
 
         // Try loading the language model
@@ -365,7 +356,7 @@ public class ModelStartupService {
     /**
      * Test load a model directly without using AIModelService
      */
-    private void testLoadModelDirectly() throws IOException, ModelNotFoundException, MalformedModelException {
+    private void testLoadModelDirectly() throws ModelNotFoundException, MalformedModelException {
         String modelName = aiConfig.getLanguageModelName();
         Path modelDir = aiConfig.getModelPath(modelName);
         Path modelFile = modelDir.resolve(aiConfig.getModelFormat());
@@ -463,17 +454,4 @@ public class ModelStartupService {
         }
     }
 
-    /**
-     * Check if models are ready to use
-     */
-    public boolean areModelsReady() {
-        return modelStateService.areModelsReady();
-    }
-
-    /**
-     * Get initialization error if models failed to initialize
-     */
-    public String getInitializationError() {
-        return modelStateService.getInitializationError();
-    }
 }
