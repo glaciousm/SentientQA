@@ -373,7 +373,7 @@ public class AIModelService {
                 String testResult = HuggingFaceModelLoader.testModel(model, "Hello");
                 logger.info("Model loaded successfully and test prediction completed: {}", 
                          testResult.substring(0, Math.min(20, testResult.length())));
-            } catch (TranslateException | ModelException e) {
+            } catch (ModelException e) {
                 throw new MalformedModelException("Model loaded but prediction test failed", e);
             }
             

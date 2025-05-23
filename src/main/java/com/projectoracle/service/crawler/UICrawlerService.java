@@ -178,6 +178,22 @@ public class UICrawlerService {
 
             // Analyze page elements and interactions
             analyzePage(driver, page);
+            
+            // Determine page type based on components found
+            page.determinePageType();
+            
+            // If this is a login page and we haven't authenticated yet, try to auto-detect and login
+            if (page.getPageType() == Page.PageType.LOGIN && !crawlerConfig.isHandleAuthentication() && visitedUrls.size() == 1) {
+                logger.info("Detected login page, attempting automatic login with test credentials");
+                if (attemptAutoLogin(driver, page)) {
+                    logger.info("Auto-login successful, continuing crawl");
+                    // Re-analyze the page after login
+                    page = createPageObject(driver, driver.getCurrentUrl());
+                    analyzePage(driver, page);
+                    page.determinePageType();
+                    pageRegistry.put(driver.getCurrentUrl(), page);
+                }
+            }
 
         } catch (Exception e) {
             logger.error("Error crawling page: {}", url, e);
@@ -272,6 +288,12 @@ public class UICrawlerService {
         
         // Add current page to discovered pages
         discoveredPages.add(page);
+        
+        // Analyze the page to find components
+        analyzePage(driver, page);
+        
+        // Determine page type based on components found
+        page.determinePageType();
         
         // If we've reached max depth, stop
         if (currentDepth >= maxDepth) {
@@ -408,6 +430,8 @@ public class UICrawlerService {
                             
                             // Create page for new window
                             Page newPage = createPageObject(driver, driver.getCurrentUrl());
+                            analyzePage(driver, newPage);
+                            newPage.determinePageType();
                             discoveredPages.add(newPage);
                             
                             // Record this as a flow
@@ -432,6 +456,8 @@ public class UICrawlerService {
                     if (!driver.getCurrentUrl().equals(preInteractionUrl)) {
                         // We navigated to a new page
                         Page newPage = createPageObject(driver, driver.getCurrentUrl());
+                        analyzePage(driver, newPage);
+                        newPage.determinePageType();
                         discoveredPages.add(newPage);
                         
                         // Record this as a navigation flow
@@ -459,6 +485,8 @@ public class UICrawlerService {
                         if (!newStateFingerprint.equals(preInteractionState)) {
                             // Create a new page object for the new state
                             Page newStatePage = createPageObject(driver, driver.getCurrentUrl());
+                            analyzePage(driver, newStatePage);
+                            newStatePage.determinePageType();
                             discoveredPages.add(newStatePage);
                             
                             // Record this as a state change flow
@@ -686,6 +714,118 @@ public class UICrawlerService {
                 return "1234567890";
             default:
                 return "Test Input";
+        }
+    }
+    
+    /**
+     * Attempt automatic login when a login page is detected
+     * Uses common test credentials for popular demo sites
+     * 
+     * @param driver WebDriver instance
+     * @param loginPage The detected login page
+     * @return true if login was successful, false otherwise
+     */
+    private boolean attemptAutoLogin(WebDriver driver, Page loginPage) {
+        try {
+            // Find username and password fields
+            WebElement usernameField = null;
+            WebElement passwordField = null;
+            WebElement loginButton = null;
+            
+            // Try to find username field
+            List<WebElement> possibleUserFields = driver.findElements(By.cssSelector(
+                "input[type='text'][name*='user'], input[type='text'][name*='login'], " +
+                "input[type='text'][name*='email'], input[type='email'], " +
+                "input[id*='user'], input[id*='login'], input[placeholder*='user'], " +
+                "input[placeholder*='email']"
+            ));
+            if (!possibleUserFields.isEmpty()) {
+                usernameField = possibleUserFields.get(0);
+            }
+            
+            // Try to find password field
+            List<WebElement> passwordFields = driver.findElements(By.cssSelector("input[type='password']"));
+            if (!passwordFields.isEmpty()) {
+                passwordField = passwordFields.get(0);
+            }
+            
+            // Try to find login button
+            List<WebElement> possibleButtons = driver.findElements(By.cssSelector(
+                "button[type='submit'], input[type='submit'], " +
+                "button.login, button.signin, button#login, button#signin, " +
+                "input[value*='login'], input[value*='sign']"
+            ));
+            if (!possibleButtons.isEmpty()) {
+                loginButton = possibleButtons.get(0);
+            }
+            
+            // If we couldn't find elements with CSS, try xpath
+            if (loginButton == null) {
+                try {
+                    loginButton = driver.findElement(By.xpath(
+                        "//button[contains(translate(text(), 'LOGIN', 'login'), 'login')] | " +
+                        "//input[@type='submit'][contains(translate(@value, 'LOGIN', 'login'), 'login')]"
+                    ));
+                } catch (Exception e) {
+                    // No login button found
+                }
+            }
+            
+            if (usernameField == null || passwordField == null || loginButton == null) {
+                logger.warn("Could not find all required login elements");
+                return false;
+            }
+            
+            // Try common test credentials based on the URL
+            String username = "standard_user";  // Default for saucedemo.com
+            String password = "secret_sauce";   // Default for saucedemo.com
+            
+            String currentUrl = driver.getCurrentUrl().toLowerCase();
+            
+            // Add more demo site credentials as needed
+            if (currentUrl.contains("demo.opencart")) {
+                username = "demo";
+                password = "demo";
+            } else if (currentUrl.contains("automationpractice")) {
+                username = "test@example.com";
+                password = "test123";
+            }
+            
+            logger.info("Attempting auto-login with username: {}", username);
+            
+            // Clear and fill fields
+            usernameField.clear();
+            usernameField.sendKeys(username);
+            
+            passwordField.clear();
+            passwordField.sendKeys(password);
+            
+            // Click login button
+            loginButton.click();
+            
+            // Wait a moment for login to process
+            Thread.sleep(2000);
+            
+            // Check if login was successful by verifying URL changed or login form disappeared
+            String newUrl = driver.getCurrentUrl();
+            boolean urlChanged = !newUrl.equals(loginPage.getUrl());
+            
+            // Also check if password field is still present (if not, we likely logged in)
+            boolean passwordFieldGone = driver.findElements(By.cssSelector("input[type='password']")).isEmpty();
+            
+            boolean success = urlChanged || passwordFieldGone;
+            
+            if (success) {
+                logger.info("Auto-login successful! New URL: {}", newUrl);
+            } else {
+                logger.warn("Auto-login failed - still on login page");
+            }
+            
+            return success;
+            
+        } catch (Exception e) {
+            logger.error("Error during auto-login attempt", e);
+            return false;
         }
     }
 

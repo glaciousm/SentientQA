@@ -22,7 +22,10 @@
       "Bash(./mvnw spring-boot:run:*)",
       "Bash(find:*)",
       "Bash(ls:*)",
-      "Bash(mvn compile:*)"
+      "Bash(mvn compile:*)",
+      "Bash(mvn compile:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

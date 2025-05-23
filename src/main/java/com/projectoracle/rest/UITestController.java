@@ -82,6 +82,51 @@ public class UITestController {
     }
 
     /**
+     * Generate tests from existing crawl results
+     */
+    @PostMapping("/generate-from-crawl/{crawlId}")
+    public ResponseEntity<GenerationResponse> generateFromCrawl(@PathVariable String crawlId) {
+        logger.info("Generating tests from crawl results: {}", crawlId);
+        
+        try {
+            // Get the current crawl results
+            List<Page> crawledPages = crawlerService.getCurrentResults();
+            
+            if (crawledPages == null || crawledPages.isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    new GenerationResponse("error", "No crawl results found", null)
+                );
+            }
+            
+            logger.info("Found {} pages from crawl, generating tests...", crawledPages.size());
+            
+            // Generate tests from the crawled pages
+            List<TestCase> generatedTests = uiTestGenerationService.generateTestsForApplication(crawledPages);
+            
+            // Group tests by type for the response
+            Map<String, Long> testTypeCount = generatedTests.stream()
+                .collect(Collectors.groupingBy(
+                    test -> test.getType().toString(),
+                    Collectors.counting()
+                ));
+            
+            GenerationResponse response = new GenerationResponse();
+            response.setStatus("success");
+            response.setMessage("Generated " + generatedTests.size() + " test cases from existing crawl");
+            response.setTestCount(generatedTests.size());
+            response.setPageCount(crawledPages.size());
+            response.setTestsByType(testTypeCount);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error generating tests from crawl", e);
+            return ResponseEntity.internalServerError().body(
+                new GenerationResponse("error", "Error generating tests: " + e.getMessage(), null)
+            );
+        }
+    }
+
+    /**
      * Get all UI tests
      */
     @GetMapping

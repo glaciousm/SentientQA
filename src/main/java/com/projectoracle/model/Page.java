@@ -96,7 +96,8 @@ public class Page {
                 }
             } else if ("table".equals(component.getType()) && component.getChildCount() > 10) {
                 hasLargeTable = true;
-            } else if ("chart".equals(component.getType()) || component.getClassName().contains("chart")) {
+            } else if ("chart".equals(component.getType()) || 
+                      (component.getClassName() != null && component.getClassName().contains("chart"))) {
                 hasCharts = true;
             }
         }

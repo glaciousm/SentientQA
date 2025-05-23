@@ -925,14 +925,128 @@
               return response.json();
             })
             .then(data => {
-              // Update results
-              if (data.length === 0) {
+              // Handle UI crawl response differently
+              if (requestData.scanType === 'ui' && data.crawlId) {
+                // Start monitoring crawl status
+                scanResults.innerHTML = `
+                  <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                      <div class="spinner-border spinner-border-sm me-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                      </div>
+                      <div>
+                        <strong>Crawling in progress...</strong>
+                        <div class="small">Discovering pages and UI components</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="crawlProgress" class="mt-3"></div>
+                `;
+                
+                // Monitor crawl status
+                const monitorCrawl = setInterval(() => {
+                  fetch(`${API_BASE_URL}/crawler/status/${data.crawlId}`)
+                    .then(response => response.json())
+                    .then(statusData => {
+                      const progress = document.getElementById('crawlProgress');
+                      if (progress) {
+                        progress.innerHTML = `
+                          <div class="card">
+                            <div class="card-body">
+                              <h6>Crawl Status: ${statusData.crawlStatus.status}</h6>
+                              <p class="mb-1">Pages discovered: ${statusData.crawlStatus.pagesDiscovered || 0}</p>
+                              ${statusData.crawlStatus.errorMessage ? `<p class="text-danger">${statusData.crawlStatus.errorMessage}</p>` : ''}
+                            </div>
+                          </div>
+                        `;
+                      }
+                      
+                      // Check if crawl is completed
+                      if (statusData.crawlStatus.completed) {
+                        clearInterval(monitorCrawl);
+                        
+                        // Automatically generate tests from crawl results
+                        scanResults.innerHTML = `
+                          <div class="alert alert-info">
+                            <div class="d-flex align-items-center">
+                              <div class="spinner-border spinner-border-sm me-2" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                              </div>
+                              <div>
+                                <strong>Generating tests from ${statusData.crawlStatus.pagesDiscovered} discovered pages...</strong>
+                              </div>
+                            </div>
+                          </div>
+                        `;
+                        
+                        // Call the test generation endpoint
+                        fetch(`${API_BASE_URL}/ui-tests/generate-from-crawl/${data.crawlId}`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json'
+                          }
+                        })
+                        .then(response => response.json())
+                        .then(testData => {
+                          if (testData.status === 'success') {
+                            scanResults.innerHTML = `
+                              <div class="alert alert-success">
+                                <h5>Test Generation Complete!</h5>
+                                <p>Successfully generated ${testData.testCount} tests from ${testData.pageCount} pages</p>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="refreshDashboard()">
+                                  Refresh Dashboard
+                                </button>
+                              </div>
+                              ${testData.testsByType ? `
+                                <div class="mt-3">
+                                  <h6>Tests by Type:</h6>
+                                  <ul class="list-group">
+                                    ${Object.entries(testData.testsByType).map(([type, count]) => `
+                                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        ${type}
+                                        <span class="badge bg-primary rounded-pill">${count}</span>
+                                      </li>
+                                    `).join('')}
+                                  </ul>
+                                </div>
+                              ` : ''}
+                            `;
+                          } else {
+                            scanResults.innerHTML = `
+                              <div class="alert alert-danger">
+                                Error generating tests: ${testData.message}
+                              </div>
+                            `;
+                          }
+                        })
+                        .catch(error => {
+                          scanResults.innerHTML = `
+                            <div class="alert alert-danger">
+                              Error generating tests: ${error.message}
+                            </div>
+                          `;
+                        });
+                      }
+                    })
+                    .catch(error => {
+                      clearInterval(monitorCrawl);
+                      scanResults.innerHTML = `
+                        <div class="alert alert-danger">
+                          Error monitoring crawl: ${error.message}
+                        </div>
+                      `;
+                    });
+                }, 2000); // Check every 2 seconds
+                
+              } else if (data.length === 0) {
+                // Code scan with no results
                 scanResults.innerHTML = `
                   <div class="alert alert-warning">
                     No tests were generated. Please check the path and try again.
                   </div>
                 `;
               } else {
+                // Code scan with results
                 scanResults.innerHTML = `
                   <div class="alert alert-success">
                     Successfully generated ${data.length} tests! 
