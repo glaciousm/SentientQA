@@ -116,6 +116,11 @@
       <version>${djl.version}</version>
     </dependency>
     <dependency>
+      <groupId>ai.djl.pytorch</groupId>
+      <artifactId>pytorch-model-zoo</artifactId>
+      <version>${djl.version}</version>
+    </dependency>
+    <dependency>
       <groupId>ai.djl.onnxruntime</groupId>
       <artifactId>onnxruntime-engine</artifactId>
       <version>${djl.version}</version>

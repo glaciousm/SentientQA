@@ -1,6 +1,8 @@
 package com.projectoracle.service;
 
 import ai.djl.MalformedModelException;
+import ai.djl.Model;
+import ai.djl.ModelException;
 import ai.djl.inference.Predictor;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
@@ -11,6 +13,8 @@ import ai.djl.ndarray.types.DataType;
 
 import com.projectoracle.config.AIConfig;
 import com.projectoracle.service.translator.TextGenerationTranslator;
+import com.projectoracle.service.translator.HuggingFaceGPT2Translator;
+import com.projectoracle.service.ai.HuggingFaceModelLoader;
 import com.projectoracle.service.ModelQuantizationService;
 import com.projectoracle.service.ModelQuantizationService.QuantizationLevel;
 
@@ -119,7 +123,7 @@ public class AIModelService {
         // Use the language model
         try {
             ZooModel<String, String> model = loadLanguageModel();
-            try (Predictor<String, String> predictor = model.newPredictor(new TextGenerationTranslator(maxTokens))) {
+            try (Predictor<String, String> predictor = model.newPredictor(new HuggingFaceGPT2Translator(maxTokens))) {
                 return predictor.predict(prompt);
             }
         } catch (Exception e) {
@@ -143,7 +147,7 @@ public class AIModelService {
         try {
             logger.info("Attempting text generation using standard model loading approach");
             ZooModel<String, String> model = loadLanguageModel();
-            try (Predictor<String, String> predictor = model.newPredictor(new TextGenerationTranslator(maxTokens))) {
+            try (Predictor<String, String> predictor = model.newPredictor(new HuggingFaceGPT2Translator(maxTokens))) {
                 return predictor.predict(prompt);
             } catch (TranslateException e) {
                 logger.warn("Standard text generation failed: {}", e.getMessage());
@@ -324,16 +328,34 @@ public class AIModelService {
 
             // Always use non-quantized model for stability
             logger.info("Loading non-quantized model (FP32) at {}", modelDir);
-            Criteria.Builder criteriaBuilder = Criteria.builder()
-                    .setTypes(String.class, String.class)
-                    .optModelPath(modelDir)
-                    .optModelName(aiConfig.getModelFormat()) // Use the original pytorch_model.bin file
-                    .optEngine("PyTorch")
-                    .optTranslator(new TextGenerationTranslator(1024));
             
-            // Build criteria and load model
-            logger.info("Loading model with criteria: {}", criteriaBuilder.toString());
-            ZooModel<String, String> model = ModelZoo.loadModel(criteriaBuilder.build());
+            // Use the specialized HuggingFace model loader for GPT-2 models
+            ZooModel<String, String> model = null;
+            
+            try {
+                // Use the HuggingFace model loader which handles GPT-2 specific requirements
+                model = HuggingFaceModelLoader.loadGPT2Model(modelDir, modelName, 1024);
+                logger.info("Successfully loaded GPT-2 model using HuggingFace loader");
+            } catch (Exception e) {
+                logger.error("HuggingFace model loader failed: {}", e.getMessage(), e);
+                
+                // Fallback to basic DJL loading with HuggingFace translator
+                try {
+                    logger.info("Attempting fallback loading with HuggingFace translator");
+                    Criteria<String, String> criteria = Criteria.builder()
+                            .setTypes(String.class, String.class)
+                            .optModelPath(modelDir)
+                            .optEngine("PyTorch")
+                            .optTranslator(new HuggingFaceGPT2Translator(1024))
+                            .optOption("mapLocation", "true")
+                            .build();
+                    model = ModelZoo.loadModel(criteria);
+                    logger.info("Successfully loaded model with fallback approach");
+                } catch (Exception fallbackException) {
+                    logger.error("Fallback loading also failed: {}", fallbackException.getMessage());
+                    throw new ModelNotFoundException("Failed to load GPT-2 model after all attempts", fallbackException);
+                }
+            }
             
             // Verify the model was loaded correctly
             if (model == null) {
@@ -347,11 +369,11 @@ public class AIModelService {
             modelStatus.put(modelKey, ModelStatus.LOADED);
             
             // Test the model with a simple prediction to ensure it works
-            try (Predictor<String, String> predictor = model.newPredictor(new TextGenerationTranslator(10))) {
-                String testResult = predictor.predict("Hello");
+            try {
+                String testResult = HuggingFaceModelLoader.testModel(model, "Hello");
                 logger.info("Model loaded successfully and test prediction completed: {}", 
                          testResult.substring(0, Math.min(20, testResult.length())));
-            } catch (TranslateException e) {
+            } catch (TranslateException | ModelException e) {
                 throw new MalformedModelException("Model loaded but prediction test failed", e);
             }
             
@@ -592,7 +614,7 @@ public class AIModelService {
                 .optModelPath(modelDir)
                 .optModelName(aiConfig.getModelFormat()) // Use the original pytorch_model.bin file
                 .optEngine("PyTorch")
-                .optTranslator(new TextGenerationTranslator(10))
+                .optTranslator(new HuggingFaceGPT2Translator(10))
                 .build();
         
         // Try to load the model
@@ -639,7 +661,7 @@ public class AIModelService {
             report.append("- Model loaded successfully in ").append(loadTime).append("ms\n");
             
             // Test inference
-            try (Predictor<String, String> predictor = model.newPredictor(new TextGenerationTranslator(10))) {
+            try (Predictor<String, String> predictor = model.newPredictor(new HuggingFaceGPT2Translator(10))) {
                 startTime = System.currentTimeMillis();
                 String testResult = predictor.predict("Hello, world!");
                 long inferenceTime = System.currentTimeMillis() - startTime;
@@ -677,7 +699,7 @@ public class AIModelService {
             report.append("- Model loaded successfully in ").append(loadTime).append("ms\n");
             
             // Test inference
-            try (Predictor<String, String> predictor = model.newPredictor(new TextGenerationTranslator(10))) {
+            try (Predictor<String, String> predictor = model.newPredictor(new HuggingFaceGPT2Translator(10))) {
                 startTime = System.currentTimeMillis();
                 String testResult = predictor.predict("Hello, world!");
                 long inferenceTime = System.currentTimeMillis() - startTime;
