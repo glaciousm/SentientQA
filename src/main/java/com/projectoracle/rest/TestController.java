@@ -353,6 +353,15 @@ public class TestController {
     }
 
     /**
+     * Find test cases by status (path variable version)
+     */
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<TestCase>> findByStatusPath(@PathVariable TestCase.TestStatus status) {
+        logger.info("Finding test cases by status (path): {}", status);
+        return ResponseEntity.ok(testCaseRepository.findByStatus(status));
+    }
+
+    /**
      * Execute a test case
      */
     @PostMapping("/{id}/execute")

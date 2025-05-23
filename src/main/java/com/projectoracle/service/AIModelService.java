@@ -113,17 +113,18 @@ public class AIModelService {
         
         // Check if models were initialized successfully at startup
         if (!modelStateService.areModelsReady()) {
-            String error = "AI models are not initialized. Error: " + modelStateService.getInitializationError();
-            logger.error(error);
-            return error;
+            throw new IllegalStateException("AI models are not initialized. Cannot generate text without models.");
         }
 
-        // Try using the language model with multiple fallback approaches
+        // Use the language model
         try {
-            return attemptTextGeneration(prompt, maxTokens);
+            ZooModel<String, String> model = loadLanguageModel();
+            try (Predictor<String, String> predictor = model.newPredictor(new TextGenerationTranslator(maxTokens))) {
+                return predictor.predict(prompt);
+            }
         } catch (Exception e) {
-            logger.error("All text generation approaches failed", e);
-            return "Error: Unable to generate text using any available method. Please check model files.";
+            logger.error("Text generation failed", e);
+            throw new RuntimeException("Failed to generate text using AI model: " + e.getMessage(), e);
         }
     }
     
@@ -304,14 +305,8 @@ public class AIModelService {
             // First verify the model file integrity
             verifyAndFixModelFile(modelFile);
             
-            // Check for .pt file but DO NOT try to create one - use the pytorch_model.bin directly
-            Path ptModelFile = modelDir.resolve(modelName + ".pt");
-            if (Files.exists(ptModelFile)) {
-                logger.info("Found existing .pt model file at {}", ptModelFile);
-            } else {
-                logger.info("No .pt file found at {}. Will use original pytorch_model.bin directly", ptModelFile);
-                // Skip creation of .pt file to avoid corruption issues
-            }
+            // Skip .pt file handling entirely - just use pytorch_model.bin directly
+            logger.info("Using original pytorch_model.bin file directly without .pt conversion");
             
             if (!Files.exists(modelFile)) {
                 throw new ModelNotFoundException("Required model file not found: " + modelFile);
@@ -327,50 +322,14 @@ public class AIModelService {
                 throw new ModelNotFoundException("Required tokenizer file not found: " + tokenizerFile);
             }
 
-            // Determine whether to use quantization
-            Criteria.Builder criteriaBuilder;
-            
-            if (aiConfig.isQuantizeLanguageModel()) {
-                // Use quantized model (FP16 or INT8 based on config)
-                ModelQuantizationService.QuantizationLevel level = aiConfig.getQuantizationLevel().equals("INT8") ? 
-                            ModelQuantizationService.QuantizationLevel.INT8 : 
-                            ModelQuantizationService.QuantizationLevel.FP16;
-                
-                logger.info("Loading quantized model with level: {}", level);
-                
-                // Get quantized model path
-                Path quantizedModelPath = quantizationService.quantizeModel(modelName, level);
-                
-                // Verify the quantized model file exists and has content
-                if (!Files.exists(quantizedModelPath) || Files.size(quantizedModelPath) < 1000) {
-                    logger.warn("Quantized model file is missing or too small. File: {}, Size: {} bytes", 
-                             quantizedModelPath, 
-                             Files.exists(quantizedModelPath) ? Files.size(quantizedModelPath) : 0);
-                    
-                    // Fall back to original model if quantized version has issues
-                    logger.info("Falling back to non-quantized model due to issues with quantized version");
-                    criteriaBuilder = Criteria.builder()
-                            .setTypes(String.class, String.class)
-                            .optModelPath(modelDir)
-                            .optEngine("PyTorch")
-                            .optTranslator(new TextGenerationTranslator(1024));
-                } else {
-                    // Use quantized model criteria
-                    logger.info("Using quantized model at {}", quantizedModelPath);
-                    criteriaBuilder = quantizationService.getQuantizedModelCriteria(modelName, level);
-                    criteriaBuilder.optTranslator(new TextGenerationTranslator(1024));
-                }
-            } else {
-                // Use regular model (FP32)
-                logger.info("Using non-quantized model (FP32) at {}", modelDir);
-                // Make sure to include both the model directory and the specific model file
-                criteriaBuilder = Criteria.builder()
-                        .setTypes(String.class, String.class)
-                        .optModelPath(modelDir)
-                        .optModelName(aiConfig.getModelFormat()) // Use the original pytorch_model.bin file
-                        .optEngine("PyTorch")
-                        .optTranslator(new TextGenerationTranslator(1024));
-            }
+            // Always use non-quantized model for stability
+            logger.info("Loading non-quantized model (FP32) at {}", modelDir);
+            Criteria.Builder criteriaBuilder = Criteria.builder()
+                    .setTypes(String.class, String.class)
+                    .optModelPath(modelDir)
+                    .optModelName(aiConfig.getModelFormat()) // Use the original pytorch_model.bin file
+                    .optEngine("PyTorch")
+                    .optTranslator(new TextGenerationTranslator(1024));
             
             // Build criteria and load model
             logger.info("Loading model with criteria: {}", criteriaBuilder.toString());
@@ -592,18 +551,8 @@ public class AIModelService {
                 return false;
             }
 
-            // For PyTorch models, just having the raw model file is sufficient
-            // We don't actually need to use .pt files at all, just use the original files
-            Path ptFile = modelFile.resolveSibling(
-                modelFile.getParent().getFileName().toString() + ".pt"
-            );
-            
-            if (Files.exists(ptFile)) {
-                logger.info("Found existing PT file at {}, will use this instead of creating a new one", ptFile);
-                return true;
-            }
-
-            logger.info("Skipping creation of .pt file to avoid potential corruption issues");
+            // Model file is valid - PyTorch can use pytorch_model.bin directly
+            logger.info("Model file verified successfully with size: {} bytes", fileSize);
             return true;
             
         } catch (Exception e) {

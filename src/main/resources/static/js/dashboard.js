@@ -233,47 +233,20 @@ function updateModelStatusUI(status, statusElement, progressElement) {
 
 // Load dashboard summary
 function loadDashboardSummary() {
-  // Check if we have real test data mode enabled
-  const useRealData = localStorage.getItem('useRealData') === 'true';
-  
-  if (useRealData) {
-    // Add the useRealData parameter to signal we want real data
-    fetch(`${API_BASE_URL}/quality-dashboard/summary?useRealData=true`)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`API returned ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        // Store that we got real data
-        localStorage.setItem('hasRealData', 'true');
-        
-        // Show notification if this is the first real data
-        if (localStorage.getItem('showedRealDataNotification') !== 'true') {
-          showNotification('Using real test data! Mock data disabled.');
-          localStorage.setItem('showedRealDataNotification', 'true');
-        }
-        
-        updateDashboardSummary(data);
-      })
-      .catch(error => {
-        console.error('Error loading dashboard summary:', error);
-        
-        // If we tried to use real data but failed, switch back to mock
-        localStorage.setItem('hasRealData', 'false');
-        
-        // Show notification about fallback
-        showNotification('Failed to load real data. Using mock data instead.', 'warning');
-        
-        // Use mock data for demo
-        updateDashboardSummary(getMockDashboardSummary());
-      });
-  } else {
-    // Explicitly using mock data mode
-    console.log('Using mock dashboard data (real data mode is disabled)');
-    updateDashboardSummary(getMockDashboardSummary());
-  }
+  fetch(`${API_BASE_URL}/quality-dashboard/summary`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      updateDashboardSummary(data);
+    })
+    .catch(error => {
+      console.error('Error loading dashboard summary:', error);
+      showErrorMessage('Failed to load dashboard summary');
+    });
 }
 
 // Update dashboard summary with data
@@ -435,8 +408,7 @@ function loadFailureTrends(days) {
     })
     .catch(error => {
       console.error('Error loading failure trends:', error);
-      // Use mock data for demo
-      updateFailureTrendChart(getMockTrendData(days));
+      showErrorMessage('Failed to load failure trends');
     });
 }
 
@@ -559,8 +531,7 @@ function loadCategoryHealth() {
     })
     .catch(error => {
       console.error('Error loading category health:', error);
-      // Use mock data for demo
-      updateCategoryHealth(getMockCategoryHealth());
+      showErrorMessage('Failed to load category health');
     });
 }
 
@@ -624,8 +595,7 @@ function loadMostFailingTests() {
     })
     .catch(error => {
       console.error('Error loading most failing tests:', error);
-      // Use mock data for demo
-      updateMostFailingTests(getMockMostFailingTests());
+      showErrorMessage('Failed to load most failing tests');
     });
 }
 
@@ -700,8 +670,7 @@ function loadFlakyTests() {
     })
     .catch(error => {
       console.error('Error loading flaky tests:', error);
-      // Use mock data for demo
-      updateFlakyTests(getMockFlakyTests());
+      showErrorMessage('Failed to load flaky tests');
     });
 }
 
@@ -784,8 +753,7 @@ function loadAllFlakyTests() {
     })
     .catch(error => {
       console.error('Error loading all flaky tests:', error);
-      // Use mock data for demo
-      showAllFlakyTestsModal(getMockFlakyTests());
+      showErrorMessage('Failed to load all flaky tests');
     });
 }
 
@@ -800,9 +768,20 @@ function showAllFlakyTestsModal(flakyTests) {
 
 // Show flaky test details
 function showFlakyTestDetails(testId) {
-  // In a real implementation, we would fetch the specific test details
-  // For now, we'll use mock data
-  const test = getMockFlakyTests().find(t => t.testId === testId) || getMockFlakyTests()[0];
+  // Fetch the specific test details from API
+  fetch(`${API_BASE_URL}/quality-dashboard/flaky-tests/${testId}`)
+    .then(response => response.json())
+    .then(test => {
+      displayFlakyTestDetailsModal(test);
+    })
+    .catch(error => {
+      console.error('Error loading flaky test details:', error);
+      showErrorMessage('Failed to load test details');
+    });
+}
+
+// Display flaky test details in modal
+function displayFlakyTestDetailsModal(test) {
   
   const modal = new bootstrap.Modal(document.getElementById('flakyTestDetailsModal'));
   const modalContent = document.getElementById('flakyTestDetailsContent');
@@ -880,8 +859,7 @@ function loadRecentExecutions() {
     })
     .catch(error => {
       console.error('Error loading recent executions:', error);
-      // Use mock data for demo
-      updateRecentExecutions(getMockRecentExecutions());
+      showErrorMessage('Failed to load recent executions');
     });
 }
 
@@ -908,7 +886,7 @@ function updateRecentExecutions(executions) {
     if (!execution.successful) {
       statusClass = 'status-failed';
       statusText = 'Failed';
-    } else if (Math.random() > 0.7) { // Randomly mark some tests as flaky for demo
+    } else if (execution.status === 'FLAKY') {
       statusClass = 'status-flaky';
       statusText = 'Flaky';
     }
@@ -1097,6 +1075,44 @@ function formatDuration(ms) {
   }
 }
 
+function showErrorMessage(message) {
+  // Show error message in a toast or alert
+  const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+  
+  const toastId = 'toast-' + new Date().getTime();
+  const toastHtml = `
+    <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header bg-danger text-white">
+        <strong class="me-auto">Error</strong>
+        <small>just now</small>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body">
+        ${message}
+      </div>
+    </div>
+  `;
+  
+  toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+  
+  const toastElement = document.getElementById(toastId);
+  const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 5000 });
+  toast.show();
+  
+  toastElement.addEventListener('hidden.bs.toast', function() {
+    toastElement.remove();
+  });
+}
+
+function createToastContainer() {
+  const toastContainer = document.createElement('div');
+  toastContainer.id = 'toastContainer';
+  toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+  toastContainer.style.zIndex = '1070';
+  document.body.appendChild(toastContainer);
+  return toastContainer;
+}
+
 function generateMockTestCode(test) {
   return `
     // This is a simplified example of what causes flakiness
@@ -1108,229 +1124,3 @@ function generateMockTestCode(test) {
   `;
 }
 
-// Mock data functions
-function getMockDashboardSummary() {
-  return {
-    totalTests: 125,
-    passingTests: 98,
-    failingTests: 12,
-    flakyTests: 8,
-    averagePassRate: 0.78,
-    testCoverage: 0.65,
-    testTrend: 'IMPROVING',
-    healthScore: 76
-  };
-}
-
-function getMockTrendData(days) {
-  const data = [];
-  const today = new Date();
-  const basePassRate = 0.75;
-  const baseFailedTests = 15;
-  
-  for (let i = days; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    
-    // Random walk around the base values
-    const passRate = Math.max(0, Math.min(1, basePassRate + (Math.random() - 0.5) * 0.1));
-    const totalTests = 120 + Math.floor(Math.random() * 10);
-    const failedTests = Math.floor(baseFailedTests + (Math.random() - 0.5) * 5);
-    
-    data.push({
-      timestamp: date.toISOString(),
-      totalTests: totalTests,
-      failedTests: failedTests,
-      passRate: passRate
-    });
-  }
-  
-  return data;
-}
-
-function getMockCategoryHealth() {
-  return {
-    'Unit': {
-      totalTests: 80,
-      passingTests: 75,
-      failingTests: 3,
-      flakyTests: 2,
-      passRate: 0.94,
-      healthScore: 92
-    },
-    'API': {
-      totalTests: 25,
-      passingTests: 20,
-      failingTests: 4,
-      flakyTests: 1,
-      passRate: 0.80,
-      healthScore: 78
-    },
-    'UI': {
-      totalTests: 15,
-      passingTests: 8,
-      failingTests: 5,
-      flakyTests: 2,
-      passRate: 0.53,
-      healthScore: 45
-    },
-    'Integration': {
-      totalTests: 18,
-      passingTests: 12,
-      failingTests: 4,
-      flakyTests: 2,
-      passRate: 0.67,
-      healthScore: 72
-    }
-  };
-}
-
-function getMockMostFailingTests() {
-  return [
-    {
-      testId: '1',
-      testName: 'testLoginWithInvalidCredentials',
-      className: 'AuthServiceTest',
-      methodName: 'testLoginWithInvalidCredentials',
-      failureCount: 8,
-      executionCount: 12,
-      failureRate: 0.67,
-      trend: 'DETERIORATING'
-    },
-    {
-      testId: '2',
-      testName: 'testDataProcessingWithLargeFile',
-      className: 'FileProcessorTest',
-      methodName: 'testDataProcessingWithLargeFile',
-      failureCount: 6,
-      executionCount: 10,
-      failureRate: 0.6,
-      trend: 'STABLE_FAIL'
-    },
-    {
-      testId: '3',
-      testName: 'testConcurrentUserAccess',
-      className: 'UserServiceTest',
-      methodName: 'testConcurrentUserAccess',
-      failureCount: 5,
-      executionCount: 12,
-      failureRate: 0.42,
-      trend: 'IMPROVING'
-    },
-    {
-      testId: '4',
-      testName: 'testImageUploadWithResizing',
-      className: 'MediaServiceTest',
-      methodName: 'testImageUploadWithResizing',
-      failureCount: 4,
-      executionCount: 11,
-      failureRate: 0.36,
-      trend: 'STABLE_FAIL'
-    },
-    {
-      testId: '5',
-      testName: 'testOrderCheckoutProcess',
-      className: 'CheckoutServiceTest',
-      methodName: 'testOrderCheckoutProcess',
-      failureCount: 3,
-      executionCount: 9,
-      failureRate: 0.33,
-      trend: 'IMPROVING'
-    }
-  ];
-}
-
-function getMockFlakyTests() {
-  return [
-    {
-      testId: '1',
-      testName: 'testAsyncOperation',
-      className: 'AsyncServiceTest',
-      methodName: 'testAsyncOperation',
-      passRate: 0.65,
-      executionCount: 20,
-      alternatingSessions: 7,
-      lastExecuted: new Date().toISOString(),
-      suggestedAction: 'Add proper thread synchronization or increase timeout'
-    },
-    {
-      testId: '2',
-      testName: 'testDatabaseConnection',
-      className: 'DatabaseServiceTest',
-      methodName: 'testDatabaseConnection',
-      passRate: 0.73,
-      executionCount: 15,
-      alternatingSessions: 4,
-      lastExecuted: new Date().toISOString(),
-      suggestedAction: 'Check for race conditions in connection pool'
-    },
-    {
-      testId: '3',
-      testName: 'testUserInterfaceRendering',
-      className: 'UIComponentTest',
-      methodName: 'testUserInterfaceRendering',
-      passRate: 0.58,
-      executionCount: 12,
-      alternatingSessions: 5,
-      lastExecuted: new Date().toISOString(),
-      suggestedAction: 'Add explicit waits for UI elements to be rendered'
-    },
-    {
-      testId: '4',
-      testName: 'testNetworkCommunication',
-      className: 'NetworkServiceTest',
-      methodName: 'testNetworkCommunication',
-      passRate: 0.62,
-      executionCount: 16,
-      alternatingSessions: 6,
-      lastExecuted: new Date().toISOString(),
-      suggestedAction: 'Mock external services to improve reliability'
-    },
-    {
-      testId: '5',
-      testName: 'testCacheInvalidation',
-      className: 'CacheServiceTest',
-      methodName: 'testCacheInvalidation',
-      passRate: 0.70,
-      executionCount: 10,
-      alternatingSessions: 3,
-      lastExecuted: new Date().toISOString(),
-      suggestedAction: 'Ensure cache state is reset between test runs'
-    }
-  ];
-}
-
-function getMockRecentExecutions() {
-  const executions = [];
-  const testNames = [
-    'testUserLogin',
-    'testDataProcessing',
-    'testPaymentValidation',
-    'testEmailSending',
-    'testReportGeneration'
-  ];
-  
-  // Generate executions with timestamps spread over the last hour
-  const now = new Date();
-  
-  for (let i = 0; i < 5; i++) {
-    const executionTime = new Date(now);
-    executionTime.setMinutes(now.getMinutes() - (i * 10)); // 10 minutes apart
-    
-    // Random success/failure
-    const successful = Math.random() > 0.3;
-    
-    executions.push({
-      id: `execution-${i}`,
-      testId: `test-${i}`,
-      testName: testNames[i],
-      executedAt: executionTime.toISOString(),
-      successful: successful,
-      executionTimeMs: Math.floor(Math.random() * 5000),
-      errorMessage: successful ? null : 'Assertion failed: expected true but was false',
-      stackTrace: successful ? null : 'at line 42 in TestClass.java'
-    });
-  }
-  
-  return executions;
-}

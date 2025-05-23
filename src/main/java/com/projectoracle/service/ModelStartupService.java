@@ -75,17 +75,19 @@ public class ModelStartupService {
                 } catch (Exception e) {
                     modelStateService.setInitializationError(e.getMessage());
                     logger.error("Model initialization failed: {}", e.getMessage(), e);
-                    // We don't throw the exception to prevent application startup failure
-                    // Instead, services will check modelsReady flag
+                    // Models MUST be loaded for the application to work
+                    throw new RuntimeException("CRITICAL: AI models failed to initialize. Application cannot function without models.", e);
                 }
             }, executor).join(); // Wait for completion
 
             executor.shutdown();
             
-            // If models failed to initialize, log a warning that functionality will be limited
-            if (!modelStateService.areModelsReady()) {
-                logger.warn("APPLICATION RUNNING WITH LIMITED FUNCTIONALITY - MODELS FAILED TO INITIALIZE");
-                logger.warn("Error: {}", modelStateService.getInitializationError());
+            // Log model status
+            if (modelStateService.getInitializationError() != null) {
+                logger.info("Application running with fallback generation enabled due to model initialization issues");
+                logger.debug("Model initialization details: {}", modelStateService.getInitializationError());
+            } else {
+                logger.info("Models initialized successfully");
             }
         } catch (Exception e) {
             logger.error("Error during model initialization: {}", e.getMessage(), e);
@@ -149,82 +151,13 @@ public class ModelStartupService {
         Path modelFile = langModelDir.resolve(aiConfig.getModelFormat());
         Path configFile = langModelDir.resolve("config.json");
         Path tokenizerFile = langModelDir.resolve("tokenizer.json");
-        Path ptFile = langModelDir.resolve(languageModelName + ".pt");
-
         // Verify files exist and have reasonable sizes
         validateFile(modelFile, 100000000); // At least 100MB for model file
         validateFile(configFile, 100); // At least 100 bytes for config
         validateFile(tokenizerFile, 1000); // At least 1KB for tokenizer
-
-        // Create PT file if it doesn't exist or if it's too small
-        boolean needToCreatePtFile = !Files.exists(ptFile);
         
-        if (Files.exists(ptFile)) {
-            logger.info("PT model file exists at {}", ptFile);
-            
-            try {
-                // Verify file size
-                long ptFileSize = Files.size(ptFile);
-                if (ptFileSize < 100000000) {
-                    logger.warn("PT file too small ({}), will recreate", ptFileSize);
-                    needToCreatePtFile = true;
-                }
-                
-                // Try to validate file using a test read operation
-                try (java.io.InputStream is = Files.newInputStream(ptFile)) {
-                    byte[] header = new byte[16];
-                    int bytesRead = is.read(header);
-                    if (bytesRead < 16) {
-                        logger.warn("PT file header too small, will recreate");
-                        needToCreatePtFile = true;
-                    }
-                } catch (Exception e) {
-                    logger.warn("PT file appears to be corrupted, will recreate: {}", e.getMessage());
-                    needToCreatePtFile = true;
-                }
-            } catch (Exception e) {
-                logger.warn("Error checking PT file, will recreate: {}", e.getMessage());
-                needToCreatePtFile = true;
-            }
-            
-            // If we need to recreate, first delete the old file to avoid partial file issues
-            if (needToCreatePtFile) {
-                try {
-                    // Backup the old file first
-                    Path backupFile = ptFile.resolveSibling(ptFile.getFileName() + ".backup");
-                    Files.move(ptFile, backupFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                    logger.info("Backed up old PT file to {}", backupFile);
-                } catch (Exception e) {
-                    logger.warn("Failed to backup old PT file: {}", e.getMessage());
-                    Files.deleteIfExists(ptFile);
-                }
-            }
-        }
-        
-        // Create/recreate the PT file if needed
-        if (needToCreatePtFile) {
-            logger.info("Creating .pt model file at {}", ptFile);
-            
-            // First copy to a temporary file to avoid partial files
-            Path tempFile = ptFile.resolveSibling(ptFile.getFileName() + ".temp");
-            try {
-                Files.copy(modelFile, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                
-                // Validate the temporary file
-                long tempFileSize = Files.size(tempFile);
-                if (tempFileSize < 100000000) {
-                    throw new IOException("Temporary PT file too small: " + tempFileSize);
-                }
-                
-                // If validation passes, move to final location
-                Files.move(tempFile, ptFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                logger.info("Successfully created PT file with size: {}", Files.size(ptFile));
-            } catch (Exception e) {
-                logger.error("Failed to create PT file: {}", e.getMessage());
-                Files.deleteIfExists(tempFile);
-                throw new IOException("Failed to create PT file: " + e.getMessage(), e);
-            }
-        }
+        // No need to create .pt files - PyTorch can use pytorch_model.bin directly
+        logger.info("Model files validated successfully. PyTorch will use pytorch_model.bin directly.");
     }
 
     /**
@@ -288,8 +221,6 @@ public class ModelStartupService {
         Path modelFile = modelDir.resolve(aiConfig.getModelFormat());
         Path configFile = modelDir.resolve("config.json");
         Path tokenizerFile = modelDir.resolve("tokenizer.json");
-        Path ptFile = modelDir.resolve(modelName + ".pt");
-        
         logger.info("Checking required model files in {}", modelDir);
         
         try {
@@ -332,20 +263,8 @@ public class ModelStartupService {
             }
             logger.info("Tokenizer file valid: {} - Size: {} bytes", tokenizerFile, tokenizerFileSize);
             
-            // Check PT file
-            if (!Files.exists(ptFile)) {
-                logger.error("PT file not found: {}", ptFile);
-                return false;
-            }
-            
-            long ptFileSize = Files.size(ptFile);
-            if (ptFileSize < 100000000) { // 100MB
-                logger.error("PT file too small: {} bytes", ptFileSize);
-                return false;
-            }
-            logger.info("PT file valid: {} - Size: {} bytes", ptFile, ptFileSize);
-            
-            // All files present and valid
+            // No need to check .pt files - PyTorch uses pytorch_model.bin directly
+            logger.info("All required model files present and valid");
             return true;
         } catch (Exception e) {
             logger.error("Error checking model files: {}", e.getMessage());

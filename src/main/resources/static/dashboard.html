@@ -516,7 +516,6 @@
 
   <!-- Application JavaScript -->
   <script src="js/dashboard.js"></script>
-  <script src="js/real-data-toggle.js"></script>
   <script src="js/code-scanner.js"></script>
   
   <!-- Initialize scan code modal directly -->
@@ -889,14 +888,35 @@
             // Enable real data mode
             localStorage.setItem('useRealData', 'true');
             
-            // For demo purposes, we'll still use the current API endpoint
-            // In a real implementation, this would be extended with the new parameters
-            const sourcePath = requestData.backend?.path || requestData.frontend?.path || requestData.backendPath || '';
-            const maxTests = requestData.maxTests || 10;
+            // Handle different scan types
+            let apiEndpoint = '';
+            let requestBody = {};
             
-            // Call the API to scan code
-            fetch(`${API_BASE_URL}/tests/scan?sourcePath=${encodeURIComponent(sourcePath)}&maxTests=${maxTests}`, {
-              method: 'POST'
+            if (requestData.scanType === 'ui') {
+              // UI scan - use crawler endpoint
+              apiEndpoint = `${API_BASE_URL}/crawler/start`;
+              requestBody = {
+                baseUrl: requestData.appUrl,
+                maxPages: parseInt(requestData.crawlDepth) * 10, // Convert depth to max pages
+                enableAuthentication: !!(requestData.username && requestData.password),
+                username: requestData.username || '',
+                password: requestData.password || '',
+                loginUrl: requestData.appUrl + '/login' // Assume login page
+              };
+            } else {
+              // Code scan
+              const sourcePath = requestData.backend?.path || requestData.frontend?.path || requestData.backendPath || '';
+              const maxTests = requestData.maxTests || 10;
+              apiEndpoint = `${API_BASE_URL}/tests/scan?sourcePath=${encodeURIComponent(sourcePath)}&maxTests=${maxTests}`;
+            }
+            
+            // Call the appropriate API
+            fetch(apiEndpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: requestData.scanType === 'ui' ? JSON.stringify(requestBody) : undefined
             })
             .then(response => {
               if (!response.ok) {

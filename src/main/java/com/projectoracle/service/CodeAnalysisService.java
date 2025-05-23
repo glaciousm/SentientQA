@@ -9,6 +9,7 @@ import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -29,6 +30,9 @@ import java.util.stream.Stream;
 public class CodeAnalysisService {
 
     private static final Logger logger = LoggerFactory.getLogger(CodeAnalysisService.class);
+    
+    @Value("${crawler.code-analysis.enabled:false}")
+    private boolean codeAnalysisEnabled;
     private final JavaParser javaParser = new JavaParser();
 
     /**
@@ -38,6 +42,11 @@ public class CodeAnalysisService {
      * @return map of method names to their details
      */
     public Map<String, MethodInfo> analyzeJavaFile(Path filePath) {
+        if (!codeAnalysisEnabled) {
+            logger.info("🚫 Code analysis is DISABLED - skipping file: {}", filePath);
+            return Map.of();
+        }
+        
         try {
             logger.info("Analyzing Java file: {}", filePath);
             String sourceCode = Files.readString(filePath);
@@ -55,6 +64,11 @@ public class CodeAnalysisService {
      * @return map of method names to their details
      */
     public Map<String, MethodInfo> analyzeJavaSource(String sourceCode) {
+        if (!codeAnalysisEnabled) {
+            logger.info("🚫 Code analysis is DISABLED - skipping source analysis");
+            return Map.of();
+        }
+        
         Map<String, MethodInfo> methodInfoMap = new HashMap<>();
 
         try {
@@ -90,6 +104,11 @@ public class CodeAnalysisService {
      * @return list of method information for all Java files
      */
     public List<MethodInfo> scanDirectory(Path dirPath) {
+        if (!codeAnalysisEnabled) {
+            logger.info("🚫 Code analysis is DISABLED - skipping directory scan: {}", dirPath);
+            return List.of();
+        }
+        
         try (Stream<Path> paths = Files.walk(dirPath)) {
             return paths
                     .filter(Files::isRegularFile)
@@ -109,6 +128,11 @@ public class CodeAnalysisService {
      * @return MethodInfo for the requested method, or null if not found
      */
     public MethodInfo findMethodBySignature(String methodSignature) {
+        if (!codeAnalysisEnabled) {
+            logger.info("🚫 Code analysis is DISABLED - cannot find method: {}", methodSignature);
+            return null;
+        }
+        
         logger.info("Looking for method with signature: {}", methodSignature);
         
         // Extract method name from signature
@@ -152,6 +176,11 @@ public class CodeAnalysisService {
      * @return List of MethodInfo objects for all methods in the class
      */
     public List<MethodInfo> findMethodsByClassName(String className) {
+        if (!codeAnalysisEnabled) {
+            logger.info("🚫 Code analysis is DISABLED - cannot find methods in class: {}", className);
+            return List.of();
+        }
+        
         logger.info("Looking for methods in class: {}", className);
         
         List<MethodInfo> methods = new ArrayList<>();
@@ -195,6 +224,11 @@ public class CodeAnalysisService {
      * @return MethodInfo for the requested method, or null if not found
      */
     public MethodInfo findMethodByClassAndName(String className, String methodName) {
+        if (!codeAnalysisEnabled) {
+            logger.info("🚫 Code analysis is DISABLED - cannot find method {} in class {}", methodName, className);
+            return null;
+        }
+        
         logger.info("Looking for method {} in class {}", methodName, className);
         
         // Search in all Java files in the current directory

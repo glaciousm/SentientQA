@@ -323,20 +323,26 @@ function loadTestLibrary() {
   document.getElementById('testLibrarySkeleton').style.display = 'block';
   document.getElementById('testLibraryContent').style.display = 'none';
   
+  // Check if we should use real data or mock data
   // Fetch tests from API
   fetch(`${API_BASE_URL}/tests`)
     .then(response => response.json())
     .then(tests => {
-      allTests = tests;
+      if (tests && tests.length > 0) {
+        console.log('Loaded test data:', tests.length, 'tests');
+        allTests = tests;
+      } else {
+        console.log('No tests found');
+        allTests = [];
+      }
       
       // Filter, sort, and display tests
       filterSortAndDisplayTests();
     })
     .catch(error => {
       console.error('Error loading tests:', error);
-      
-      // Use mock data for demo
-      allTests = getMockTests();
+      showErrorMessage('Failed to load tests');
+      allTests = [];
       
       // Filter, sort, and display tests
       filterSortAndDisplayTests();
@@ -753,9 +759,8 @@ function loadBrokenTests() {
     })
     .catch(error => {
       console.error('Error loading broken tests:', error);
-      
-      // Use mock data for demo
-      displayBrokenTests(getMockBrokenTests());
+      showErrorMessage('Failed to load broken tests');
+      displayBrokenTests([]);
     });
 }
 
@@ -843,9 +848,7 @@ function selectBrokenTest(testId) {
     })
     .catch(error => {
       console.error('Error loading test analysis:', error);
-      
-      // Use mock data for demo
-      displayTestAnalysis(test, getMockTestAnalysis(test));
+      showErrorMessage('Failed to load test analysis');
     });
 }
 
@@ -1039,10 +1042,7 @@ function loadPriorityConfig() {
     })
     .catch(error => {
       console.error('Error loading priority config:', error);
-      
-      // Use mock data for demo
-      priorityConfig = getMockPriorityConfig();
-      updatePriorityConfigUI(priorityConfig);
+      showErrorMessage('Failed to load priority configuration');
     });
 }
 
@@ -1142,9 +1142,8 @@ function loadPrioritizedTests(context = 'all') {
     })
     .catch(error => {
       console.error('Error loading prioritized tests:', error);
-      
-      // Use mock data for demo
-      displayPrioritizedTests(getMockPrioritizedTests());
+      showErrorMessage('Failed to load prioritized tests');
+      displayPrioritizedTests([]);
     });
 }
 
@@ -1301,6 +1300,44 @@ function getStatusClass(status) {
   }
 }
 
+function showErrorMessage(message) {
+  // Show error message in a toast or alert
+  const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+  
+  const toastId = 'toast-' + new Date().getTime();
+  const toastHtml = `
+    <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header bg-danger text-white">
+        <strong class="me-auto">Error</strong>
+        <small>just now</small>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body">
+        ${message}
+      </div>
+    </div>
+  `;
+  
+  toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+  
+  const toastElement = document.getElementById(toastId);
+  const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 5000 });
+  toast.show();
+  
+  toastElement.addEventListener('hidden.bs.toast', function() {
+    toastElement.remove();
+  });
+}
+
+function createToastContainer() {
+  const toastContainer = document.createElement('div');
+  toastContainer.id = 'toastContainer';
+  toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+  toastContainer.style.zIndex = '1070';
+  document.body.appendChild(toastContainer);
+  return toastContainer;
+}
+
 function getErrorType(test) {
   if (!test.failureMessage) return 'Unknown';
   
@@ -1332,129 +1369,3 @@ function getPatternSeverity(confidence) {
 }
 
 // Mock data functions
-function getMockTests() {
-  const statuses = ['PASSED', 'FAILED', 'BROKEN', 'HEALED'];
-  const types = ['Unit', 'Integration', 'API', 'UI'];
-  const tests = [];
-  
-  for (let i = 1; i <= 50; i++) {
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const name = `Test${i}`;
-    const className = `TestClass${Math.ceil(i / 5)}`;
-    const methodName = `testMethod${i}`;
-    const packageName = 'com.projectoracle.tests';
-    
-    // Create test
-    tests.push({
-      id: `test-${i}`,
-      name: name,
-      className: className,
-      methodName: methodName,
-      packageName: packageName,
-      type: type,
-      status: status,
-      createdAt: new Date(2023, 0, 1).toISOString(),
-      modifiedAt: new Date(2023, 0, 1 + i).toISOString(),
-      sourceCode: getMockSourceCode(methodName),
-      assertions: getMockAssertions(),
-      failureMessage: status === 'FAILED' || status === 'BROKEN' ? 'Assertion failed' : null,
-      stackTrace: status === 'FAILED' || status === 'BROKEN' ? 'at line 42 in TestClass.java' : null
-    });
-  }
-  
-  return tests;
-}
-
-function getMockSourceCode(methodName) {
-  return `@Test
-public void ${methodName}() {
-    // Test implementation
-    int result = calculator.add(2, 3);
-    assertEquals(5, result);
-}`;
-}
-
-function getMockAssertions() {
-  return [
-    'assertEquals(5, result)',
-    'assertNotNull(result)',
-    'assertTrue(result > 0)'
-  ];
-}
-
-function getMockBrokenTests() {
-  return getMockTests().filter(test => test.status === 'BROKEN');
-}
-
-function getMockTestAnalysis(test) {
-  return {
-    testId: test.id,
-    detectedPatterns: [
-      {
-        patternId: 'pattern-1',
-        patternType: 'NullPointerException',
-        description: 'Null reference was accessed',
-        errorSignature: 'NPE:com.projectoracle.tests.TestClass1:42',
-        occurrences: 1,
-        confidenceScore: 0.9,
-        properties: {},
-        suggestedFixes: [
-          'Add null check before accessing the object',
-          'Initialize the variable before using it',
-          'Use Optional<> to handle potentially null values'
-        ]
-      }
-    ],
-    suggestedFixes: [
-      'Add null check before accessing the calculator object',
-      'Initialize calculator in the setup method',
-      'Add @Before setup method to ensure calculator is not null'
-    ]
-  };
-}
-
-function getMockPriorityConfig() {
-  return {
-    enabled: true,
-    failureWeight: 3,
-    changeCorrelationWeight: 4,
-    executionTimeWeight: 2,
-    coverageWeight: 2,
-    dependencyWeight: 1,
-    prioritizeFlaky: true,
-    prioritizeNew: true,
-    maxFastTrackTests: 10
-  };
-}
-
-function getMockPrioritizedTests() {
-  const tests = getMockTests();
-  const prioritizedTests = [];
-  
-  for (let i = 0; i < 20; i++) {
-    if (i < tests.length) {
-      const test = tests[i];
-      
-      // Calculate mock priority score
-      const priorityScore = 100 - (i * 5);
-      
-      // Create mock priority factors
-      const priorityFactors = {
-        failureHistory: Math.random() > 0.5,
-        codeChangeCorrelation: Math.random() > 0.7,
-        coverage: Math.random() > 0.6,
-        executionTime: Math.random() > 0.5,
-        isNew: i === 0 || i === 5 || i === 10
-      };
-      
-      prioritizedTests.push({
-        ...test,
-        priorityScore,
-        priorityFactors
-      });
-    }
-  }
-  
-  return prioritizedTests;
-}

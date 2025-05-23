@@ -292,16 +292,29 @@ public class UICrawlerService {
         visitedStates.add(stateFingerprint);
         
         // Get all interactive elements on the page
+        logger.info("🔍 SEARCHING for interactive elements on page...");
         List<WebElement> interactiveElements = findInteractiveElements(driver);
         
+        logger.info("🎯 Found {} interactive elements", interactiveElements.size());
+        
         // Sort elements by priority (important UI components first)
+        logger.info("📊 Sorting elements by priority...");
         sortElementsByPriority(interactiveElements);
+        
+        // Log top elements found
+        logger.info("🏆 Top interactive elements found:");
+        for (int i = 0; i < Math.min(interactiveElements.size(), 10); i++) {
+            String elementInfo = getElementDescription(interactiveElements.get(i));
+            logger.info("   {}. {}", i + 1, elementInfo);
+        }
         
         // Limit the number of interactions if needed
         if (interactiveElements.size() > maxInteractions) {
-            logger.info("Limiting interactions to {} out of {} elements", 
+            logger.info("⚡ Limiting interactions to {} out of {} elements", 
                     maxInteractions, interactiveElements.size());
             interactiveElements = interactiveElements.subList(0, maxInteractions);
+        } else {
+            logger.info("📝 Will interact with all {} elements found", interactiveElements.size());
         }
         
         // Save original window handle
@@ -309,26 +322,33 @@ public class UICrawlerService {
         String originalUrl = driver.getCurrentUrl();
         
         // Interact with each element
+        logger.info("🚀 STARTING INTERACTIONS - Processing {} elements", interactiveElements.size());
         int interactionCount = 0;
         for (WebElement element : interactiveElements) {
             if (interactionCount >= maxInteractions) {
-                logger.info("Reached maximum interaction count of {}", maxInteractions);
+                logger.info("🛑 Reached maximum interaction count of {}", maxInteractions);
                 break;
             }
             
             try {
                 // Skip invisible elements
                 if (!element.isDisplayed()) {
+                    logger.debug("👻 Skipping invisible element");
                     continue;
                 }
                 
                 // Determine element type
                 String elementType = determineElementType(element);
+                String elementInfo = getElementDescription(element);
+                
+                logger.info("🔄 INTERACTION #{} - Processing: {} (Type: {})", 
+                    interactionCount + 1, elementInfo, elementType);
                 
                 // Skip form elements if includeForms is false
                 if (!includeForms && (elementType.startsWith("input:") || 
                                     elementType.equals("select") || 
                                     elementType.equals("textarea"))) {
+                    logger.info("📝 Skipping form element (forms disabled): {}", elementInfo);
                     continue;
                 }
                 
@@ -499,7 +519,13 @@ public class UICrawlerService {
             String currentPageSource = driver.getPageSource().length() > 1000 ? 
                     driver.getPageSource().substring(0, 1000) : driver.getPageSource();
             
+            // Log what we're about to click
+            String elementInfo = getElementDescription(element);
+            logger.info("🖱️  CLICKING ELEMENT: {}", elementInfo);
+            logger.info("📍 Current URL: {}", currentUrl);
+            
             // Scroll to element to ensure it's visible
+            logger.info("📜 Scrolling to element...");
             ((JavascriptExecutor) driver).executeScript(
                     "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element);
             
@@ -510,7 +536,17 @@ public class UICrawlerService {
                 Thread.currentThread().interrupt();
             }
             
+            // Highlight element before clicking (for visual feedback)
+            try {
+                ((JavascriptExecutor) driver).executeScript(
+                    "arguments[0].style.border='3px solid red'; arguments[0].style.backgroundColor='yellow';", element);
+                Thread.sleep(1000); // Hold highlight for 1 second
+            } catch (Exception e) {
+                // Ignore highlighting errors
+            }
+            
             // Click the element
+            logger.info("🎯 Performing click...");
             element.click();
             
             // Wait for page changes
@@ -521,19 +557,25 @@ public class UICrawlerService {
                 wait.until(driver1 -> {
                     // Check if URL changed
                     if (!driver1.getCurrentUrl().equals(currentUrl)) {
+                        logger.info("✅ URL CHANGED: {} -> {}", currentUrl, driver1.getCurrentUrl());
                         return true;
                     }
                     
                     // Check if page content changed significantly
                     String newPageSource = driver1.getPageSource().length() > 1000 ? 
                             driver1.getPageSource().substring(0, 1000) : driver1.getPageSource();
-                    return !newPageSource.equals(currentPageSource);
+                    if (!newPageSource.equals(currentPageSource)) {
+                        logger.info("✅ PAGE CONTENT CHANGED after click");
+                        return true;
+                    }
+                    return false;
                 });
             } catch (Exception e) {
                 // Timeout or other error, but the click might still have had an effect
-                logger.debug("No significant change after clicking element: {}", e.getMessage());
+                logger.warn("⏰ No significant change detected after clicking element: {}", e.getMessage());
             }
             
+            logger.info("✅ Click completed successfully");
             return true;
         } catch (Exception e) {
             logger.error("Error clicking element", e);
@@ -550,15 +592,32 @@ public class UICrawlerService {
      */
     private boolean typeIntoElement(WebElement element, String text) {
         try {
+            String elementInfo = getElementDescription(element);
+            logger.info("⌨️  TYPING INTO ELEMENT: {}", elementInfo);
+            logger.info("📝 Text to type: '{}'", text);
+            
+            // Highlight element before typing (for visual feedback)
+            try {
+                WebDriver driver = ((org.openqa.selenium.WrapsDriver) element).getWrappedDriver();
+                ((JavascriptExecutor) driver).executeScript(
+                    "arguments[0].style.border='3px solid blue'; arguments[0].style.backgroundColor='lightblue';", element);
+                Thread.sleep(500);
+            } catch (Exception e) {
+                // Ignore highlighting errors
+            }
+            
             // Clear existing text
+            logger.info("🧹 Clearing existing text...");
             element.clear();
             
             // Type the text
+            logger.info("⌨️  Typing text...");
             element.sendKeys(text);
             
+            logger.info("✅ Text entered successfully");
             return true;
         } catch (Exception e) {
-            logger.error("Error typing into element", e);
+            logger.error("❌ Error typing into element: {}", e.getMessage());
             return false;
         }
     }
@@ -572,22 +631,40 @@ public class UICrawlerService {
      */
     private boolean selectOption(WebElement element, int optionIndex) {
         try {
+            String elementInfo = getElementDescription(element);
+            logger.info("🔽 SELECTING FROM DROPDOWN: {}", elementInfo);
+            logger.info("🎯 Option index to select: {}", optionIndex);
+            
             Select select = new Select(element);
             
             // Get all options
             List<WebElement> options = select.getOptions();
+            logger.info("📋 Available options: {}", options.size());
+            
+            // Log all available options
+            for (int i = 0; i < Math.min(options.size(), 5); i++) {
+                logger.info("   {}. {}", i, options.get(i).getText());
+            }
+            if (options.size() > 5) {
+                logger.info("   ... and {} more options", options.size() - 5);
+            }
             
             // Check if index is valid
             if (optionIndex >= 0 && optionIndex < options.size()) {
+                String optionText = options.get(optionIndex).getText();
+                logger.info("🎯 Selecting option: '{}'", optionText);
+                
                 // Select by index
                 select.selectByIndex(optionIndex);
+                
+                logger.info("✅ Option selected successfully");
                 return true;
             } else {
-                logger.warn("Invalid option index: {}, max: {}", optionIndex, options.size() - 1);
+                logger.warn("❌ Invalid option index: {}, max: {}", optionIndex, options.size() - 1);
                 return false;
             }
         } catch (Exception e) {
-            logger.error("Error selecting option", e);
+            logger.error("❌ Error selecting option: {}", e.getMessage());
             return false;
         }
     }
@@ -829,10 +906,11 @@ public class UICrawlerService {
             
             ChromeOptions options = new ChromeOptions();
 
-            // Add browser options for crawling
-            if (!crawlerConfig.isTakeScreenshots()) {
-                options.addArguments("--headless=new"); // Use new headless mode
-            }
+            // Add browser options for crawling - DISABLE HEADLESS MODE FOR MONITORING
+            logger.info("🌐 Configuring Chrome browser (VISIBLE MODE for monitoring)");
+            // Never use headless mode - user wants to see the crawling
+            // options.addArguments("--headless=new"); // DISABLED for user monitoring
+            
             options.addArguments("--disable-gpu");
             options.addArguments("--window-size=" + crawlerConfig.getViewportWidth() + "," + 
                     crawlerConfig.getViewportHeight());
@@ -841,6 +919,13 @@ public class UICrawlerService {
             options.addArguments("--no-sandbox");
             options.addArguments("--disable-dev-shm-usage");
             options.addArguments("--user-agent=" + crawlerConfig.getUserAgent());
+            
+            // Add options for better visibility
+            options.addArguments("--start-maximized");
+            options.addArguments("--disable-web-security");
+            options.addArguments("--allow-running-insecure-content");
+            
+            logger.info("🚀 Launching Chrome browser...");
 
             // Create a new ChromeDriver instance
             return new ChromeDriver(options);

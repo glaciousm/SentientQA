@@ -47,6 +47,20 @@ public class TestPrioritizationController {
     }
     
     /**
+     * Get all tests prioritized for execution
+     * 
+     * @return Prioritized list of all test cases
+     */
+    @GetMapping("/execution")
+    public ResponseEntity<List<TestCase>> getAllTestsPrioritized() {
+        log.info("Getting all tests prioritized for execution");
+        
+        // Get all tests and prioritize them
+        List<TestCase> allTests = prioritizationService.getAllTestsPrioritized();
+        return ResponseEntity.ok(allTests);
+    }
+    
+    /**
      * Prioritize test cases for execution
      * 
      * @param tests Test cases to prioritize

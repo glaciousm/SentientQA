@@ -323,6 +323,26 @@ public class TestPrioritizationService {
     }
     
     /**
+     * Get all tests prioritized for execution
+     * 
+     * @return All test cases prioritized by execution importance
+     */
+    public List<TestCase> getAllTestsPrioritized() {
+        log.info("Getting all tests prioritized for execution");
+        
+        // Get all test cases
+        List<TestCase> allTests = testCaseRepository.findAll();
+        
+        // If no tests exist, return empty list
+        if (allTests.isEmpty()) {
+            return allTests;
+        }
+        
+        // Prioritize them without any changed files (general prioritization)
+        return prioritizeTestExecution(allTests, null);
+    }
+    
+    /**
      * Prioritize tests for execution
      * 
      * @param testCases The test cases to prioritize

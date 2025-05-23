@@ -126,6 +126,25 @@ public class ModelDownloadService {
             String tokenizerUrl = modelUrl.replace("pytorch_model.bin", "tokenizer.json");
             Path tempTokenizerFile = tempDir.resolve("tokenizer.json");
             downloadFile(tokenizerUrl, tempTokenizerFile, modelName + " tokenizer");
+            
+            // Also download tokenizer_config.json and vocab.json if available
+            try {
+                String tokenizerConfigUrl = modelUrl.replace("pytorch_model.bin", "tokenizer_config.json");
+                Path tempTokenizerConfigFile = tempDir.resolve("tokenizer_config.json");
+                downloadFile(tokenizerConfigUrl, tempTokenizerConfigFile, modelName + " tokenizer config");
+                Files.move(tempTokenizerConfigFile, modelDir.resolve("tokenizer_config.json"), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                logger.warn("tokenizer_config.json not available for {}: {}", modelName, e.getMessage());
+            }
+            
+            try {
+                String vocabUrl = modelUrl.replace("pytorch_model.bin", "vocab.json");
+                Path tempVocabFile = tempDir.resolve("vocab.json");
+                downloadFile(vocabUrl, tempVocabFile, modelName + " vocab");
+                Files.move(tempVocabFile, modelDir.resolve("vocab.json"), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                logger.warn("vocab.json not available for {}: {}", modelName, e.getMessage());
+            }
 
             // Move files from temp to final location
             Files.move(tempModelFile, modelFile, StandardCopyOption.REPLACE_EXISTING);
