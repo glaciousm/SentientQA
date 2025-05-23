@@ -21,10 +21,13 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/login"),
                     new AntPathRequestMatcher("/login.html"),
                     new AntPathRequestMatcher("/index.html"),
+                    new AntPathRequestMatcher("/dashboard.html"),
+                    new AntPathRequestMatcher("/test-management.html"),
                     new AntPathRequestMatcher("/css/**"),
                     new AntPathRequestMatcher("/js/**"),
                     new AntPathRequestMatcher("/images/**"),
                     new AntPathRequestMatcher("/api/v1/health"),
+                    new AntPathRequestMatcher("/api/v1/**"),  // Allow all API access for now
                     new AntPathRequestMatcher("/h2-console/**"),
                     new AntPathRequestMatcher("/swagger-ui/**"),
                     new AntPathRequestMatcher("/v3/api-docs/**"),

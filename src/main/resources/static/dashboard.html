@@ -83,6 +83,9 @@
       </div>
       <div class="col-md-4 text-end">
         <div class="btn-group" role="group">
+          <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#scanCodeModal">
+            <i class="bi bi-plus-circle"></i> Scan & Generate Tests
+          </button>
           <button id="refreshDashboardBtn" class="btn btn-primary">
             <i class="bi bi-arrow-clockwise"></i> Refresh Data
           </button>
@@ -901,7 +904,7 @@
                 enableAuthentication: !!(requestData.username && requestData.password),
                 username: requestData.username || '',
                 password: requestData.password || '',
-                loginUrl: requestData.appUrl + '/login' // Assume login page
+                loginUrl: requestData.appUrl // Use base URL as login URL, crawler will detect login page
               };
             } else {
               // Code scan

@@ -1,7 +1,7 @@
 // code-scanner.js - Functions for scanning code and generating real test data
 
 // API Base URL
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+const API_BASE_URL = '/api/v1';
 
 // Create a modal for scanning code 
 function createScanCodeModal() {

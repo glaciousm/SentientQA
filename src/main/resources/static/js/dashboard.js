@@ -1,7 +1,7 @@
 // dashboard.js - JavaScript for the Quality Intelligence Dashboard
 
-// API Base URL
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+// API Base URL - use relative path to work on any host
+const API_BASE_URL = '/api/v1';
 
 // Global variables
 let modelStatusVisible = false;
@@ -13,28 +13,46 @@ let charts = {}; // Store chart objects
 
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', function() {
-  // Hide loading overlay after a minimum display time
-  setTimeout(function() {
-    const pageLoadingOverlay = document.getElementById('pageLoadingOverlay');
-    if (pageLoadingOverlay) {
-      pageLoadingOverlay.classList.add('hidden');
-      setTimeout(() => {
-        pageLoadingOverlay.style.display = 'none';
-      }, 300);
+  try {
+    console.log('Dashboard initializing...');
+    
+    // Hide loading overlay after a minimum display time
+    setTimeout(function() {
+      const pageLoadingOverlay = document.getElementById('pageLoadingOverlay');
+      if (pageLoadingOverlay) {
+        pageLoadingOverlay.classList.add('hidden');
+        setTimeout(() => {
+          pageLoadingOverlay.style.display = 'none';
+        }, 300);
+      }
+    }, 1000);
+
+    // Initialize tooltips
+    initTooltips();
+
+    // Initialize the dashboard data
+    initDashboard();
+
+    // Initialize model status display
+    initModelStatus();
+
+    // Initialize event listeners
+    initEventListeners();
+    
+    console.log('Dashboard initialized successfully');
+  } catch (error) {
+    console.error('Error initializing dashboard:', error);
+    // Show error message to user
+    const container = document.querySelector('.container-fluid');
+    if (container) {
+      container.insertAdjacentHTML('afterbegin', `
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <strong>Error!</strong> Failed to initialize dashboard: ${error.message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `);
     }
-  }, 1000);
-
-  // Initialize tooltips
-  initTooltips();
-
-  // Initialize the dashboard data
-  initDashboard();
-
-  // Initialize model status display
-  initModelStatus();
-
-  // Initialize event listeners
-  initEventListeners();
+  }
 });
 
 // Initialize Bootstrap tooltips

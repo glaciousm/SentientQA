@@ -103,18 +103,28 @@ public class UICrawlerService {
         }
 
         try {
-            // Start the crawl process
-            crawlPage(baseUrl, baseUrl, maxPages);
-
-            // Wait for all crawl tasks to complete
-            executorService.shutdown();
-            executorService.awaitTermination(crawlerConfig.getCrawlTimeoutMinutes(), TimeUnit.MINUTES);
-
-            logger.info("Crawl completed. Discovered {} pages", pageRegistry.size());
-            return new ArrayList<>(pageRegistry.values());
+            // Use interactive exploration instead of basic crawling
+            // This keeps everything in one browser session
+            List<Page> pages = explorePageInteractively(baseUrl, 
+                crawlerConfig.getMaxDepth(), 
+                true,  // include forms
+                maxPages * 5); // max interactions
+            
+            logger.info("Crawl completed. Discovered {} pages", pages.size());
+            
+            // Store pages in registry
+            for (Page page : pages) {
+                pageRegistry.put(page.getUrl(), page);
+            }
+            
+            return pages;
         } catch (Exception e) {
             logger.error("Error during application crawl", e);
             return new ArrayList<>(pageRegistry.values());
+        } finally {
+            if (executorService != null && !executorService.isShutdown()) {
+                executorService.shutdown();
+            }
         }
     }
 
@@ -147,20 +157,41 @@ public class UICrawlerService {
             // Initialize WebDriver
             driver = createWebDriver();
             
-            // Perform login if authentication is enabled, service is available, and this is the first page
-            if (crawlerConfig.isHandleAuthentication() && authenticationService != null && visitedUrls.size() == 1) {
-                boolean loginSuccess = authenticationService.performLogin(driver);
-                if (!loginSuccess) {
-                    logger.warn("Authentication failed. Crawling may be limited.");
-                }
-            }
-
-            // Navigate to the URL
+            // Navigate to the URL first
             driver.get(url);
-
+            
             // Wait for page to load
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
             wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
+            
+            // Perform login if authentication is enabled, service is available, and this is the first page
+            if (crawlerConfig.isHandleAuthentication() && authenticationService != null && visitedUrls.size() == 1) {
+                // Check if we're already on a login page
+                if (isLoginPage(driver)) {
+                    logger.info("Already on login page, performing login");
+                    boolean loginSuccess = authenticationService.performLogin(driver, 
+                            crawlerConfig.getUsername(), 
+                            crawlerConfig.getPassword(), 
+                            driver.getCurrentUrl()); // Use current URL as login URL
+                    if (loginSuccess) {
+                        logger.info("Login successful, updating URL to post-login page");
+                        url = driver.getCurrentUrl(); // Update URL to post-login location
+                    } else {
+                        logger.warn("Authentication failed. Crawling may be limited.");
+                    }
+                } else if (crawlerConfig.getLoginUrl() != null && !crawlerConfig.getLoginUrl().isEmpty()) {
+                    // Navigate to configured login URL
+                    boolean loginSuccess = authenticationService.performLogin(driver);
+                    if (loginSuccess) {
+                        // After successful login, navigate back to original URL if different
+                        if (!driver.getCurrentUrl().equals(url)) {
+                            driver.get(url);
+                        }
+                    } else {
+                        logger.warn("Authentication failed. Crawling may be limited.");
+                    }
+                }
+            }
 
             // Create page object
             Page page = createPageObject(driver, url);
@@ -182,16 +213,29 @@ public class UICrawlerService {
             // Determine page type based on components found
             page.determinePageType();
             
-            // If this is a login page and we haven't authenticated yet, try to auto-detect and login
-            if (page.getPageType() == Page.PageType.LOGIN && !crawlerConfig.isHandleAuthentication() && visitedUrls.size() == 1) {
-                logger.info("Detected login page, attempting automatic login with test credentials");
+            // If this is a login page and we haven't successfully logged in yet, try auto-login with test credentials
+            if (page.getPageType() == Page.PageType.LOGIN && visitedUrls.size() == 1) {
+                logger.info("Still on login page, attempting automatic login with test credentials");
                 if (attemptAutoLogin(driver, page)) {
                     logger.info("Auto-login successful, continuing crawl");
+                    
+                    // Update the current URL after login
+                    String newUrl = driver.getCurrentUrl();
+                    visitedUrls.add(newUrl);
+                    
                     // Re-analyze the page after login
-                    page = createPageObject(driver, driver.getCurrentUrl());
+                    page = createPageObject(driver, newUrl);
                     analyzePage(driver, page);
                     page.determinePageType();
-                    pageRegistry.put(driver.getCurrentUrl(), page);
+                    pageRegistry.put(newUrl, page);
+                    
+                    // Find all links on the new page and continue crawling
+                    List<String> postLoginLinks = discoverLinks(driver, baseUrl);
+                    for (String link : postLoginLinks) {
+                        if (visitedUrls.size() < maxPages && !visitedUrls.contains(link)) {
+                            executorService.submit(() -> crawlPage(link, baseUrl, maxPages));
+                        }
+                    }
                 }
             }
 
@@ -231,20 +275,43 @@ public class UICrawlerService {
             // Initialize WebDriver
             driver = createWebDriver();
             
-            // Perform login if authentication is enabled and service is available
-            if (crawlerConfig.isHandleAuthentication() && authenticationService != null) {
-                boolean loginSuccess = authenticationService.performLogin(driver);
-                if (!loginSuccess) {
-                    logger.warn("Authentication failed. Exploration may be limited.");
-                }
-            }
-            
             // Navigate to the starting URL
             driver.get(pageUrl);
             
             // Wait for page to load
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
             wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
+            
+            // Check if we're on a login page and handle authentication
+            if (isLoginPage(driver)) {
+                logger.info("Detected login page during interactive exploration");
+                
+                boolean loginSuccess = false;
+                // First try with provided credentials if available
+                if (crawlerConfig.isHandleAuthentication() && authenticationService != null) {
+                    loginSuccess = authenticationService.performLogin(driver);
+                }
+                
+                // If no credentials or login failed, try auto-login
+                if (!loginSuccess) {
+                    logger.info("Attempting auto-login with test credentials");
+                    Page loginPage = createPageObject(driver, driver.getCurrentUrl());
+                    analyzePage(driver, loginPage);
+                    loginPage.determinePageType();
+                    
+                    if (attemptAutoLogin(driver, loginPage)) {
+                        logger.info("Auto-login successful");
+                        loginSuccess = true;
+                        
+                        // Wait for navigation after login
+                        wait.until(ExpectedConditions.not(ExpectedConditions.urlToBe(pageUrl)));
+                    }
+                }
+                
+                if (!loginSuccess) {
+                    logger.warn("Could not log in, exploration may be limited");
+                }
+            }
             
             // Create page object for the start page
             Page startPage = createPageObject(driver, pageUrl);
@@ -718,6 +785,34 @@ public class UICrawlerService {
     }
     
     /**
+     * Check if the current page is a login page
+     * 
+     * @param driver WebDriver instance
+     * @return true if the page appears to be a login page
+     */
+    private boolean isLoginPage(WebDriver driver) {
+        try {
+            // Check for password field - most reliable indicator
+            List<WebElement> passwordFields = driver.findElements(By.cssSelector("input[type='password']"));
+            if (!passwordFields.isEmpty()) {
+                // Also check for username/email field
+                List<WebElement> userFields = driver.findElements(By.cssSelector(
+                    "input[type='text'], input[type='email']"
+                ));
+                return !userFields.isEmpty();
+            }
+            
+            // Check URL for login indicators
+            String url = driver.getCurrentUrl().toLowerCase();
+            return url.contains("login") || url.contains("signin") || 
+                   url.contains("sign-in") || url.contains("auth");
+        } catch (Exception e) {
+            logger.error("Error checking if page is login page", e);
+            return false;
+        }
+    }
+    
+    /**
      * Attempt automatic login when a login page is detected
      * Uses common test credentials for popular demo sites
      * 
@@ -727,55 +822,6 @@ public class UICrawlerService {
      */
     private boolean attemptAutoLogin(WebDriver driver, Page loginPage) {
         try {
-            // Find username and password fields
-            WebElement usernameField = null;
-            WebElement passwordField = null;
-            WebElement loginButton = null;
-            
-            // Try to find username field
-            List<WebElement> possibleUserFields = driver.findElements(By.cssSelector(
-                "input[type='text'][name*='user'], input[type='text'][name*='login'], " +
-                "input[type='text'][name*='email'], input[type='email'], " +
-                "input[id*='user'], input[id*='login'], input[placeholder*='user'], " +
-                "input[placeholder*='email']"
-            ));
-            if (!possibleUserFields.isEmpty()) {
-                usernameField = possibleUserFields.get(0);
-            }
-            
-            // Try to find password field
-            List<WebElement> passwordFields = driver.findElements(By.cssSelector("input[type='password']"));
-            if (!passwordFields.isEmpty()) {
-                passwordField = passwordFields.get(0);
-            }
-            
-            // Try to find login button
-            List<WebElement> possibleButtons = driver.findElements(By.cssSelector(
-                "button[type='submit'], input[type='submit'], " +
-                "button.login, button.signin, button#login, button#signin, " +
-                "input[value*='login'], input[value*='sign']"
-            ));
-            if (!possibleButtons.isEmpty()) {
-                loginButton = possibleButtons.get(0);
-            }
-            
-            // If we couldn't find elements with CSS, try xpath
-            if (loginButton == null) {
-                try {
-                    loginButton = driver.findElement(By.xpath(
-                        "//button[contains(translate(text(), 'LOGIN', 'login'), 'login')] | " +
-                        "//input[@type='submit'][contains(translate(@value, 'LOGIN', 'login'), 'login')]"
-                    ));
-                } catch (Exception e) {
-                    // No login button found
-                }
-            }
-            
-            if (usernameField == null || passwordField == null || loginButton == null) {
-                logger.warn("Could not find all required login elements");
-                return false;
-            }
-            
             // Try common test credentials based on the URL
             String username = "standard_user";  // Default for saucedemo.com
             String password = "secret_sauce";   // Default for saucedemo.com
@@ -793,35 +839,13 @@ public class UICrawlerService {
             
             logger.info("Attempting auto-login with username: {}", username);
             
-            // Clear and fill fields
-            usernameField.clear();
-            usernameField.sendKeys(username);
-            
-            passwordField.clear();
-            passwordField.sendKeys(password);
-            
-            // Click login button
-            loginButton.click();
-            
-            // Wait a moment for login to process
-            Thread.sleep(2000);
-            
-            // Check if login was successful by verifying URL changed or login form disappeared
-            String newUrl = driver.getCurrentUrl();
-            boolean urlChanged = !newUrl.equals(loginPage.getUrl());
-            
-            // Also check if password field is still present (if not, we likely logged in)
-            boolean passwordFieldGone = driver.findElements(By.cssSelector("input[type='password']")).isEmpty();
-            
-            boolean success = urlChanged || passwordFieldGone;
-            
-            if (success) {
-                logger.info("Auto-login successful! New URL: {}", newUrl);
+            // Use the authentication service to perform login
+            if (authenticationService != null) {
+                return authenticationService.performLogin(driver, username, password, driver.getCurrentUrl());
             } else {
-                logger.warn("Auto-login failed - still on login page");
+                logger.error("Authentication service not available for auto-login");
+                return false;
             }
-            
-            return success;
             
         } catch (Exception e) {
             logger.error("Error during auto-login attempt", e);

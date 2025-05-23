@@ -123,9 +123,15 @@ public class UITestGenerationService {
             return generateNavigationTest(page); // Fallback to simple navigation
         }
 
-        // Generate test code with AI
+        // Generate test code with AI or fallback
         String prompt = builder.buildLoginTestPrompt(page, usernameField, passwordField, submitButton);
-        String testCode = aiModelService.generateText(prompt, 1000);
+        String testCode;
+        try {
+            testCode = aiModelService.generateText(prompt, 1000);
+        } catch (Exception e) {
+            logger.warn("AI model failed, using rule-based fallback for login test");
+            testCode = generateFallbackLoginTest(page, usernameField, passwordField, submitButton);
+        }
 
         // Create test case
         TestCase testCase = TestCase.builder()
@@ -319,9 +325,15 @@ public class UITestGenerationService {
     private TestCase generateNavigationTest(Page page) {
         logger.info("Generating navigation test for page: {}", page.getUrl());
 
-        // Generate test code with AI
+        // Generate test code with AI or fallback
         String prompt = builder.buildNavigationTestPrompt(page);
-        String testCode = aiModelService.generateText(prompt, 800);
+        String testCode;
+        try {
+            testCode = aiModelService.generateText(prompt, 800);
+        } catch (Exception e) {
+            logger.warn("AI model failed, using rule-based fallback for navigation test");
+            testCode = generateFallbackNavigationTest(page);
+        }
 
         // Create test case
         TestCase testCase = TestCase.builder()
@@ -613,5 +625,98 @@ public class UITestGenerationService {
         }
 
         return sanitized;
+    }
+    
+    /**
+     * Generate a fallback navigation test when AI is not available
+     */
+    private String generateFallbackNavigationTest(Page page) {
+        StringBuilder testCode = new StringBuilder();
+        
+        testCode.append("@Test\n");
+        testCode.append("@DisplayName(\"Navigate to ").append(page.getTitle()).append("\")\n");
+        testCode.append("public void testNavigation_").append(sanitizeForMethodName(page.getTitle())).append("() {\n");
+        testCode.append("    // Navigate to the page\n");
+        testCode.append("    driver.get(\"").append(page.getUrl()).append("\");\n");
+        testCode.append("    \n");
+        testCode.append("    // Wait for page to load\n");
+        testCode.append("    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));\n");
+        testCode.append("    wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName(\"body\")));\n");
+        testCode.append("    \n");
+        testCode.append("    // Verify page title\n");
+        testCode.append("    String actualTitle = driver.getTitle();\n");
+        testCode.append("    assertTrue(actualTitle.contains(\"").append(page.getTitle().replace("\"", "\\\"")).append("\"),\n");
+        testCode.append("               \"Expected page title to contain '").append(page.getTitle()).append("' but was '\" + actualTitle + \"'\");\n");
+        testCode.append("    \n");
+        testCode.append("    // Verify we're on the correct URL\n");
+        testCode.append("    String currentUrl = driver.getCurrentUrl();\n");
+        testCode.append("    assertTrue(currentUrl.contains(\"").append(page.getUrl().replace("\"", "\\\"")).append("\"),\n");
+        testCode.append("               \"Expected URL to contain '").append(page.getUrl()).append("' but was '\" + currentUrl + \"'\");\n");
+        
+        // Add component checks if available
+        if (page.getComponents() != null && !page.getComponents().isEmpty()) {
+            testCode.append("    \n");
+            testCode.append("    // Verify key components are present\n");
+            int componentCount = 0;
+            for (UIComponent component : page.getComponents()) {
+                if (componentCount >= 3) break; // Limit to 3 component checks
+                if (component.getElementLocator() != null && !component.getElementLocator().isEmpty()) {
+                    testCode.append("    assertTrue(driver.findElements(By.xpath(\"")
+                           .append(component.getElementLocator().replace("\"", "\\\""))
+                           .append("\")).size() > 0,\n");
+                    testCode.append("               \"Expected to find ").append(component.getType())
+                           .append(" component on page\");\n");
+                    componentCount++;
+                }
+            }
+        }
+        
+        testCode.append("}\n");
+        
+        return testCode.toString();
+    }
+    
+    /**
+     * Generate a fallback login test when AI is not available
+     */
+    private String generateFallbackLoginTest(Page page, UIComponent usernameField, UIComponent passwordField, UIComponent submitButton) {
+        StringBuilder testCode = new StringBuilder();
+        
+        testCode.append("@Test\n");
+        testCode.append("@DisplayName(\"Test login functionality\")\n");
+        testCode.append("public void testLogin() {\n");
+        testCode.append("    // Navigate to login page\n");
+        testCode.append("    driver.get(\"").append(page.getUrl()).append("\");\n");
+        testCode.append("    \n");
+        testCode.append("    // Wait for page to load\n");
+        testCode.append("    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));\n");
+        testCode.append("    \n");
+        testCode.append("    // Find and fill username field\n");
+        testCode.append("    WebElement usernameElement = wait.until(ExpectedConditions.presenceOfElementLocated(\n");
+        testCode.append("        By.xpath(\"").append(usernameField.getElementLocator()).append("\")));\n");
+        testCode.append("    usernameElement.clear();\n");
+        testCode.append("    usernameElement.sendKeys(\"testuser\");\n");
+        testCode.append("    \n");
+        testCode.append("    // Find and fill password field\n");
+        testCode.append("    WebElement passwordElement = driver.findElement(\n");
+        testCode.append("        By.xpath(\"").append(passwordField.getElementLocator()).append("\"));\n");
+        testCode.append("    passwordElement.clear();\n");
+        testCode.append("    passwordElement.sendKeys(\"testpass123\");\n");
+        testCode.append("    \n");
+        testCode.append("    // Click submit button\n");
+        testCode.append("    WebElement submitElement = driver.findElement(\n");
+        testCode.append("        By.xpath(\"").append(submitButton.getElementLocator()).append("\"));\n");
+        testCode.append("    submitElement.click();\n");
+        testCode.append("    \n");
+        testCode.append("    // Wait for navigation after login\n");
+        testCode.append("    wait.until(ExpectedConditions.not(ExpectedConditions.urlToBe(\"").append(page.getUrl()).append("\")));\n");
+        testCode.append("    \n");
+        testCode.append("    // Verify login was successful\n");
+        testCode.append("    String currentUrl = driver.getCurrentUrl();\n");
+        testCode.append("    assertNotEquals(\"").append(page.getUrl()).append("\", currentUrl,\n");
+        testCode.append("                     \"Should have navigated away from login page after successful login\");\n");
+        testCode.append("}\n");
+        
+        return testCode.toString();
     }
 }
