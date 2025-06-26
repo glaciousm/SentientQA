@@ -5,6 +5,8 @@ import com.projectoracle.model.TestCase.TestExecutionResult;
 import com.projectoracle.model.TestCase.TestStatus;
 import com.projectoracle.repository.TestCaseRepository;
 import com.projectoracle.config.AIConfig;
+import com.projectoracle.model.AtlassianCredentials;
+import com.projectoracle.service.JiraService;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
@@ -28,7 +30,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -60,6 +61,21 @@ public class EnhancedTestExecutionService {
     @Autowired
     @Qualifier("backgroundExecutor")
     private Executor backgroundExecutor;
+
+    @Autowired
+    private JiraService jiraService;
+
+    @Value("${integration.jira.project:}")
+    private String jiraProjectKey;
+
+    @Value("${integration.jira.url:}")
+    private String jiraUrl;
+
+    @Value("${integration.jira.username:}")
+    private String jiraUsername;
+
+    @Value("${integration.jira.api-token:}")
+    private String jiraApiToken;
 
     @Value("${app.directories.output:output}")
     private String outputDir;
@@ -160,6 +176,43 @@ public class EnhancedTestExecutionService {
 
                     // Save the test case with results
                     testCaseRepository.save(testCase);
+
+                    // Auto-create Jira issue if test failed and credentials are provided
+                    if (!result.isSuccess() && jiraProjectKey != null && !jiraProjectKey.isEmpty()
+                            && jiraUrl != null && !jiraUrl.isEmpty()
+                            && jiraUsername != null && !jiraUsername.isEmpty()
+                            && jiraApiToken != null && !jiraApiToken.isEmpty()) {
+                        AtlassianCredentials creds = AtlassianCredentials.builder()
+                                .baseUrl(jiraUrl)
+                                .username(jiraUsername)
+                                .apiToken(jiraApiToken)
+                                .authType(AtlassianCredentials.AuthType.BASIC_AUTH)
+                                .build();
+
+                        String summary = "Test failed: " + testCase.getName();
+                        String desc = result.getErrorMessage() != null ? result.getErrorMessage() : "Test failure";
+                        String issueKey = jiraService.createIssue(creds, jiraProjectKey, summary, desc);
+                        if (issueKey != null) {
+                            logger.info("Created Jira issue {} for failed test {}", issueKey, testCase.getId());
+                            testCase.setLinkedIssueKey(issueKey);
+                            testCaseRepository.save(testCase);
+                        }
+
+                    // If test passed and linked issue exists, transition it to Done
+                    } else if (result.isSuccess() && testCase.getLinkedIssueKey() != null) {
+                        AtlassianCredentials creds = AtlassianCredentials.builder()
+                                .baseUrl(jiraUrl)
+                                .username(jiraUsername)
+                                .apiToken(jiraApiToken)
+                                .authType(AtlassianCredentials.AuthType.BASIC_AUTH)
+                                .build();
+                        boolean transitioned = jiraService.transitionIssue(creds, testCase.getLinkedIssueKey(), "Done");
+                        if (transitioned) {
+                            logger.info("Closed Jira issue {} for test {}", testCase.getLinkedIssueKey(), testCase.getId());
+                            testCase.setLinkedIssueKey(null);
+                            testCaseRepository.save(testCase);
+                        }
+                    }
 
                     logger.info("Test execution completed for: {}, success: {}",
                             testCase.getId(), result.isSuccess());

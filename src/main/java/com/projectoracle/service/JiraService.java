@@ -421,4 +421,89 @@ public class JiraService {
             return null;
         }
     }
+
+    /**
+     * Create a Jira issue for a failing test case.
+     *
+     * @param credentials Atlassian credentials
+     * @param projectKey  Jira project key
+     * @param summary     Issue summary
+     * @param description Issue description
+     * @return created issue key or null
+     */
+    public String createIssue(AtlassianCredentials credentials, String projectKey,
+                              String summary, String description) {
+        logger.info("Creating Jira issue in project {}", projectKey);
+
+        try {
+            HttpHeaders headers = createHeaders(credentials);
+            headers.add("Content-Type", "application/json");
+
+            String apiUrl = credentials.getBaseUrl() + API_PATH + "/issue";
+
+            String body = "{" +
+                    "\"fields\": {" +
+                    "\"project\": {\"key\": \"" + projectKey + "\"}," +
+                    "\"summary\": \"" + summary.replace("\"", "\\\"") + "\"," +
+                    "\"description\": \"" + description.replace("\"", "\\\"") + "\"," +
+                    "\"issuetype\": {\"name\": \"Bug\"}" +
+                    "}}";
+
+            HttpEntity<String> entity = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response = restTemplate.exchange(
+                    apiUrl,
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
+
+            JsonNode node = objectMapper.readTree(response.getBody());
+            if (node.has("key")) {
+                return node.get("key").asText();
+            }
+        } catch (Exception e) {
+            logger.error("Failed to create Jira issue: {}", e.getMessage(), e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Transition an issue to a different status by name.
+     *
+     * @param credentials Atlassian credentials
+     * @param issueKey    issue key
+     * @param statusName  target status name (e.g., "Done")
+     * @return true if transition succeeded
+     */
+    public boolean transitionIssue(AtlassianCredentials credentials, String issueKey, String statusName) {
+        try {
+            HttpHeaders headers = createHeaders(credentials);
+            headers.add("Content-Type", "application/json");
+
+            String transitionsUrl = credentials.getBaseUrl() + API_PATH + "/issue/" + issueKey + "/transitions";
+
+            ResponseEntity<String> resp = restTemplate.exchange(
+                    transitionsUrl,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    String.class
+            );
+
+            JsonNode node = objectMapper.readTree(resp.getBody());
+            if (node.has("transitions")) {
+                for (JsonNode t : node.get("transitions")) {
+                    if (statusName.equalsIgnoreCase(t.get("name").asText())) {
+                        String id = t.get("id").asText();
+                        String body = "{\"transition\":{\"id\":\"" + id + "\"}}";
+                        restTemplate.exchange(transitionsUrl, HttpMethod.POST, new HttpEntity<>(body, headers), String.class);
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Failed to transition issue {}: {}", issueKey, e.getMessage(), e);
+        }
+        return false;
+    }
 }

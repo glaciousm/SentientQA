@@ -3,6 +3,7 @@ package com.projectoracle.service;
 import com.projectoracle.model.AutomationSetupOption;
 import com.projectoracle.model.TestCase;
 import com.projectoracle.repository.TestCaseRepository;
+import com.projectoracle.repository.APIEndpointRepository;
 import com.projectoracle.service.crawler.UICrawlerService;
 import com.projectoracle.service.crawler.UITestGenerationService;
 import java.io.File;
@@ -37,6 +38,12 @@ public class TestAutomationOrchestrator {
 
     @Autowired
     private JiraService jiraService;
+
+    @Autowired
+    private CIIntegrationService ciIntegrationService;
+
+    @Autowired
+    private APIEndpointRepository apiEndpointRepository;
 
     /**
      * Checks if user wants to create automation tests after crawling
@@ -152,11 +159,16 @@ public class TestAutomationOrchestrator {
                 } else if (testCase.isApiTest()) {
                     addRestAssuredTest(projectDir, testCase);
                 }
-                
+
                 addCucumberFeature(projectDir, testCase);
             }
         }
-        
+
+        // Generate basic CI/CD configuration
+        ciIntegrationService.createJenkinsfile(projectDir);
+        ciIntegrationService.createGitHubActionsWorkflow(projectDir);
+        ciIntegrationService.createDockerComposeFile(projectDir);
+
         return projectDir;
     }
 
@@ -669,13 +681,11 @@ public class TestAutomationOrchestrator {
                     apiClassContent += "        return get(ENDPOINT);\n";
                     break;
                 case "POST":
-                    apiClassContent += "        // TODO: Replace with actual request body\n" +
-                            "        Object requestBody = new Object();\n" +
+                    apiClassContent += "        String requestBody = \"" + escapeJson(buildRequestBody(testCase)) + "\";\n" +
                             "        return post(ENDPOINT, requestBody);\n";
                     break;
                 case "PUT":
-                    apiClassContent += "        // TODO: Replace with actual request body\n" +
-                            "        Object requestBody = new Object();\n" +
+                    apiClassContent += "        String requestBody = \"" + escapeJson(buildRequestBody(testCase)) + "\";\n" +
                             "        return put(ENDPOINT, requestBody);\n";
                     break;
                 case "DELETE":
@@ -849,8 +859,7 @@ public class TestAutomationOrchestrator {
                                     stepClassContent += "        response = api.get();\n";
                                     break;
                                 case "post":
-                                    stepClassContent += "        // TODO: Replace with actual request body\n" +
-                                            "        Object requestBody = new Object();\n" +
+                                    stepClassContent += "        String requestBody = \"" + escapeJson(buildRequestBody(testCase)) + "\";\n" +
                                             "        response = api.post(requestBody);\n";
                                     break;
                                 default:
@@ -999,6 +1008,36 @@ public class TestAutomationOrchestrator {
         
         // Default to Given for first step
         return "Given";
+    }
+
+    /**
+     * Build request body JSON for an API test case
+     */
+    private String buildRequestBody(TestCase testCase) {
+        if (testCase.getTargetEndpoint() == null) {
+            return "{}";
+        }
+
+        var endpoint = apiEndpointRepository.findByUrlAndMethod(
+                testCase.getTargetEndpoint(), testCase.getHttpMethod());
+        if (endpoint != null) {
+            if (endpoint.getRequestBody() != null && !endpoint.getRequestBody().isEmpty()) {
+                return endpoint.getRequestBody();
+            }
+            if (!endpoint.getParameters().isEmpty()) {
+                try {
+                    return new com.fasterxml.jackson.databind.ObjectMapper()
+                            .writeValueAsString(endpoint.getParameters());
+                } catch (Exception e) {
+                    logger.warn("Failed to serialize parameters", e);
+                }
+            }
+        }
+        return "{}";
+    }
+
+    private String escapeJson(String input) {
+        return input.replace("\"", "\\\"");
     }
 
     /**

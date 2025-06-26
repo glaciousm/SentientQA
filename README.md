@@ -25,9 +25,20 @@
 
 4. **Run the Application**
    ```bash
-   java -jar target/sentinel-0.1.0-SNAPSHOT.jar
-   ```  
-   The server starts on port 8080. On first run, it auto-downloads the default AI model to `output/models`.
+    java -jar target/sentinel-0.1.0-SNAPSHOT.jar
+    ```
+    The server starts on port 8080. On first run, it auto-downloads the default AI model to `output/models`.
+
+5. **Run with Docker**
+    ```bash
+    docker build -t sentinel .
+    docker run -p 8080:8080 sentinel
+    ```
+
+6. **Run with Docker Compose**
+    ```bash
+    docker compose up --build
+    ```
 
 ## Usage
 
@@ -145,6 +156,9 @@ Refer to the source Javadoc or log output for full request/response models.
 - **Execution Engine** (`EnhancedTestExecutionService`): Compiles with Java Compiler API and runs JUnit 5, capturing results.
 - **Reporting** (`TestReportGenerator`): Aggregates results and coverage, outputs HTML/JSON/CSV/Excel.
 - **Self-Healing** (`TestHealingService`): AI fixes for failing tests.
+- **CI/CD Integration** (`CIIntegrationService`): Generates Jenkins, GitHub Actions, and Docker Compose files for automated builds.
+- **Issue Tracker Automation**: Failed tests can automatically create Jira tickets when credentials are configured.
+- **Linked Issue Updates**: Jira tickets created for failing tests are closed automatically when the tests pass.
 
 ## Dependencies
 
