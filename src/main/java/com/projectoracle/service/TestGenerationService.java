@@ -3,6 +3,7 @@ package com.projectoracle.service;
 import com.projectoracle.model.TestCase;
 import com.projectoracle.model.UserFlow;
 import com.projectoracle.model.Page;
+import com.projectoracle.model.UIComponent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -644,10 +645,39 @@ public class TestGenerationService {
         code.append("        // ").append(getFlowDescription(flow)).append("\n");
         
         if ("form_submission".equals(flow.getFlowType())) {
-            // Add form fill code
             code.append("        // Fill in form fields\n");
             code.append("        wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName(\"form\")));\n");
-            code.append("        // TODO: Add specific form field interactions based on the actual form\n");
+
+            if (flow.getSourcePage() != null && flow.getSourcePage().getComponents() != null) {
+                for (UIComponent comp : flow.getSourcePage().getComponents()) {
+                    if (!"input".equals(comp.getType()) && !"textarea".equals(comp.getType()) && !"select".equals(comp.getType())) {
+                        continue;
+                    }
+
+                    String locator = comp.getElementLocator();
+                    if (locator == null || locator.isEmpty()) {
+                        if (comp.getId() != null && !comp.getId().isEmpty()) {
+                            locator = "#" + comp.getId();
+                        } else if (comp.getName() != null && !comp.getName().isEmpty()) {
+                            locator = "[name='" + comp.getName() + "']";
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    code.append("        driver.findElement(By.cssSelector(\"")
+                        .append(locator)
+                        .append("\"))");
+                    if ("checkbox".equals(comp.getSubtype())) {
+                        code.append(".click();\n");
+                    } else {
+                        code.append(".sendKeys(\"")
+                            .append(comp.generateTestValue())
+                            .append("\");\n");
+                    }
+                }
+            }
+
             code.append("        WebElement submitButton = driver.findElement(By.cssSelector(\"button[type='submit']\"));\n");
             code.append("        submitButton.click();\n");
         } else if ("navigation".equals(flow.getFlowType())) {

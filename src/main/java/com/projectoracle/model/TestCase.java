@@ -45,6 +45,9 @@ public class TestCase {
     private String executionOutput;
     private String errorMessage;
     private Boolean runningInCi;
+
+    // Issue tracker integration
+    private String linkedIssueKey;
     
     // Knowledge integration fields
     private List<KnowledgeSource> knowledgeSources;
@@ -125,6 +128,7 @@ public class TestCase {
                 .executionOutput(this.executionOutput)
                 .errorMessage(this.errorMessage)
                 .runningInCi(this.runningInCi)
+                .linkedIssueKey(this.linkedIssueKey)
                 .knowledgeEnhancementScore(this.knowledgeEnhancementScore)
                 .targetPage(this.targetPage)
                 .targetEndpoint(this.targetEndpoint)
